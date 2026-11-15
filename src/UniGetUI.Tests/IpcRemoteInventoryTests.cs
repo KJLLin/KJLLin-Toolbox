@@ -44,6 +44,42 @@ public sealed class IpcRemoteInventoryTests
     }
 
     [Fact]
+    public void SourceLabelsContainingLocalPathsAreNotSent()
+    {
+        var manager = new PowerShell7();
+        const string localPath = @"C:\Private\packages";
+        var source = new ManagerSource(manager, localPath, new Uri(localPath));
+        IPackage[] packages = [new Package("Package", "package", "1.0", source, manager)];
+
+        var projected = IpcRemoteInventory.ProjectPackages(packages, installed: true, new HashSet<string>());
+        var sources = IpcRemoteInventory.BuildSources([manager], [source]);
+        var json = IpcJson.Serialize(projected.ToArray()) + IpcJson.Serialize(sources.ToArray());
+
+        Assert.DoesNotContain(@"C:\\Private\\packages", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnsafeAndAmbiguousSourcesAreOmitted()
+    {
+        var manager = new PowerShell7();
+        IManagerSource[] observed =
+        [
+            new ManagerSource(manager, @"C:\Private\packages", new Uri(@"C:\Private\packages")),
+            new ManagerSource(manager, "corp", new Uri("https://a.example.test/")),
+            new ManagerSource(manager, "corp", new Uri("https://b.example.test/")),
+            new ManagerSource(manager, "my-token-feed", new Uri("https://example.test/")),
+        ];
+
+        var sources = IpcRemoteInventory.BuildSources([manager], observed);
+
+        Assert.DoesNotContain(sources, source => string.IsNullOrEmpty(source.Name) || source.Name == "corp" || source.Name == "my-token-feed");
+        Assert.Contains(sources, source => source.Name == "PSGallery");
+        Assert.All(sources, source => Assert.Equal("", source.Url));
+        Assert.Equal(RemoteSourceResolution.NotFound,
+            IpcRemoteInventory.ResolveSource([manager], observed, manager.Id, "my-token-feed"));
+    }
+
+    [Fact]
     public void SourceResolutionCannotInferInstalledOrigin()
     {
         var manager = new Pip();

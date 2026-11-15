@@ -33,6 +33,12 @@ public sealed record RemoteInventorySnapshot(
 /// </summary>
 public static class IpcRemoteInventory
 {
+    private static readonly string[] SensitiveSourceMarkers =
+    [
+        "password", "passwd", "token", "secret", "apikey", "api_key", "api-key",
+        "credential", "bearer", "authorization",
+    ];
+
     /// <summary>
     /// The installed packages already loaded locally, or <c>false</c> while that list is not
     /// complete (never loaded, or being reloaded), which the caller reports as busy.
@@ -150,8 +156,11 @@ public static class IpcRemoteInventory
         var samePackage = updates
             .Where(update => update.Manager == row.Manager && update.Id == row.Id)
             .ToArray();
+        bool loneInstallation =
+            installed.Count(other => other.Manager == row.Manager && other.Id == row.Id) == 1;
         var sameScope = samePackage
-            .Where(update => (update.ReportedScope ?? "") == (row.ReportedScope ?? ""))
+            .Where(update => !string.IsNullOrEmpty(update.ReportedScope)
+                && update.ReportedScope == row.ReportedScope)
             .Select(update => update.NewVersion)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -166,10 +175,8 @@ public static class IpcRemoteInventory
         }
 
         // An update listing may report no scope; attribute it only to a lone installation.
-        bool loneInstallation =
-            installed.Count(other => other.Manager == row.Manager && other.Id == row.Id) == 1;
         var anyScope = samePackage
-            .Where(update => update.ReportedScope is null)
+            .Where(update => string.IsNullOrEmpty(update.ReportedScope))
             .Select(update => update.NewVersion)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -242,7 +249,7 @@ public static class IpcRemoteInventory
         return matches switch
         {
             0 => RemoteSourceResolution.NotFound,
-            1 => IsSafeSourceText(sourceName) ? RemoteSourceResolution.Resolved : RemoteSourceResolution.NotFound,
+            1 => SafeText(sourceName).Length != 0 ? RemoteSourceResolution.Resolved : RemoteSourceResolution.NotFound,
             _ => RemoteSourceResolution.Ambiguous,
         };
     }
@@ -262,12 +269,15 @@ public static class IpcRemoteInventory
             foreach (var source in sources.DistinctBy(SourceKey, StringComparer.Ordinal))
             {
                 var name = SafeSourceName(source, ambiguous);
+                if (name.Length == 0)
+                    continue;
+
                 result.Add(new IpcSourceInfo
                 {
                     Manager = IpcManagerSettingsApi.GetPublicManagerId(manager),
                     Name = name,
                     DisplayName = SafeText(source.AsString_DisplayName),
-                    Url = SafeUrl(source.Url),
+                    Url = "",
                     IsKnown = known.Contains(SourceKey(source)),
                     IsConfigured = !known.Contains(SourceKey(source)),
                 });
@@ -300,51 +310,6 @@ public static class IpcRemoteInventory
             .OrderBy(package => package.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(package => package.Id, StringComparer.OrdinalIgnoreCase)
             .ToArray();
-    }
-
-    /// <summary>
-    /// False for text that can carry credentials or local paths: URLs with user information or a
-    /// query, file URLs, rooted or UNC paths, and control characters.
-    /// </summary>
-    internal static bool IsSafeSourceText(string? text)
-    {
-        if (string.IsNullOrEmpty(text))
-        {
-            return true;
-        }
-
-        if (text.Any(char.IsControl))
-        {
-            return false;
-        }
-
-        var schemeEnd = text.IndexOf("://", StringComparison.Ordinal);
-        if (schemeEnd >= 0)
-        {
-            var afterScheme = text[(schemeEnd + 3)..];
-            var authorityEnd = afterScheme.IndexOfAny(['/', '?', '#']);
-            var authority = authorityEnd < 0 ? afterScheme : afterScheme[..authorityEnd];
-            if (authority.Contains('@') || text.Contains('?') || text.Contains('#'))
-            {
-                return false;
-            }
-
-            if (text.Contains("file:", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-        }
-
-        if (text.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
-            || text.StartsWith('\\')
-            || text.StartsWith('/')
-            || text.StartsWith('~')
-            || (text.Length >= 2 && char.IsAsciiLetter(text[0]) && text[1] == ':'))
-        {
-            return false;
-        }
-
-        return true;
     }
 
     private static bool TryProject(
@@ -386,19 +351,14 @@ public static class IpcRemoteInventory
             .ToHashSet(StringComparer.Ordinal);
 
     private static string SafeSourceName(IManagerSource source, IReadOnlySet<string> ambiguous) =>
-        ambiguous.Contains(source.Name) || !IsSafeSourceText(source.Name) ? "" : source.Name;
+        ambiguous.Contains(source.Name) ? "" : SafeText(source.Name);
 
-    private static string SafeText(string text) => IsSafeSourceText(text) ? text : "";
-
-    private static string SafeUrl(Uri url)
-    {
-        var text = url.ToString();
-        return url.IsAbsoluteUri
-            && (url.Scheme == Uri.UriSchemeHttps || url.Scheme == Uri.UriSchemeHttp)
-            && IsSafeSourceText(text)
+    private static string SafeText(string text) =>
+        text.Length != 0
+        && text.All(character => char.IsLetterOrDigit(character) || character is ' ' or '-' or '_' or '.')
+        && !SensitiveSourceMarkers.Any(marker => text.Contains(marker, StringComparison.OrdinalIgnoreCase))
             ? text
             : "";
-    }
 
     private static string SourceKey(IManagerSource source) => $"{source.Name}\n{source.Url}";
 }
