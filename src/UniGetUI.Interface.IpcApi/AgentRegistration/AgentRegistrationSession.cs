@@ -11,6 +11,7 @@ internal sealed record AgentRegistrationOptions
     public TimeSpan MinBackoff { get; init; } = TimeSpan.FromSeconds(1);
     public TimeSpan MaxBackoff { get; init; } = TimeSpan.FromSeconds(60);
     public int MaxOutstandingRequests { get; init; } = 8;
+    public TimeSpan InventoryRefreshInterval { get; init; } = TimeSpan.FromMinutes(15);
     public string ClientVersion { get; init; } = CoreData.VersionName;
 }
 
@@ -56,6 +57,7 @@ internal sealed class AgentRegistrationSession
         CancellationToken token = sessionCts.Token;
         bool registered = false;
         Task? pinger = null;
+        Task? refresher = null;
         try
         {
             using (var helloCts = CancellationTokenSource.CreateLinkedTokenSource(token, helloDeadline))
@@ -82,6 +84,7 @@ internal sealed class AgentRegistrationSession
 
             registered = true;
             Registered?.Invoke();
+            refresher = Task.Run(() => InventoryRefreshLoopAsync(token), CancellationToken.None);
 
             while (true)
             {
@@ -127,9 +130,28 @@ internal sealed class AgentRegistrationSession
                 }
                 catch (Exception) { }
             }
+
+            if (refresher is not null)
+            {
+                await refresher.ConfigureAwait(false);
+            }
         }
 
         return registered;
+    }
+
+    // Only while registered: changes made by hand on the machine reach the inventory unasked.
+    private async Task InventoryRefreshLoopAsync(CancellationToken token)
+    {
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(_options.InventoryRefreshInterval, _time, token).ConfigureAwait(false);
+                _dispatcher.RefreshInstalledInventory();
+            }
+        }
+        catch (OperationCanceledException) { }
     }
 
     private async Task HandleRequestAsync(JsonElement root, CancellationTokenSource sessionCts)
