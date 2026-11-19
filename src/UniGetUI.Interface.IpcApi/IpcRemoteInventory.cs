@@ -154,7 +154,9 @@ public static class IpcRemoteInventory
     )
     {
         var samePackage = updates
-            .Where(update => update.Manager == row.Manager && update.Id == row.Id)
+            .Where(update => update.Manager == row.Manager && update.Id == row.Id
+                // An update listed for another version is stale: the row was upgraded since.
+                && update.Version == row.Version)
             .ToArray();
         bool loneInstallation =
             installed.Count(other => other.Manager == row.Manager && other.Id == row.Id) == 1;
@@ -196,8 +198,9 @@ public static class IpcRemoteInventory
     }
 
     /// <summary>
-    /// Resolves a canonical source name by ordinal comparison against the manager's known and
-    /// observed sources. The display label is never accepted in its place.
+    /// Resolves a canonical source name by ordinal comparison against the manager's known sources
+    /// and the sources observed in the last completed scans, the copies the Agent chose from, so
+    /// a load running meanwhile does not hide them.
     /// </summary>
     public static RemoteSourceResolution ResolveSource(
         string manager,
@@ -205,11 +208,13 @@ public static class IpcRemoteInventory
         bool requireInstalledOrigin = false
     )
     {
-        var observed = SnapshotPackages(InstalledPackagesLoader.Instance)
-            .Concat(SnapshotPackages(UpgradablePackagesLoader.Instance))
-            .Select(package => package.Source);
-        return ResolveSource(PEInterface.Managers, observed, manager, sourceName, requireInstalledOrigin);
+        return ResolveSource(PEInterface.Managers, ScannedSources(), manager, sourceName, requireInstalledOrigin);
     }
+
+    internal static IEnumerable<IManagerSource> ScannedSources() =>
+        (InstalledPackagesLoader.Instance?.LastCompletedScan?.Packages ?? [])
+            .Concat(UpgradablePackagesLoader.Instance?.LastCompletedScan?.Packages ?? [])
+            .Select(package => package.Source);
 
     /// <param name="requireInstalledOrigin">
     /// True for update and uninstall, which require package-specific origin evidence not present

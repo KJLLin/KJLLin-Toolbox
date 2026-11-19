@@ -1117,6 +1117,8 @@ namespace UniGetUI.PackageEngine.Managers.WingetManager
             }
         }
 
+        protected override bool IndexRefreshUpdatesOnlyCatalogues => true;
+
         public override void RefreshPackageIndexes()
         {
             using var _cliLock = AcquireCliLock();
