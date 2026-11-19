@@ -1,0 +1,41 @@
+name: polaris-brand
+
+on:
+  push:
+    branches: [polaris]
+    paths:
+      - "branding/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  brand:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Apply Polaris branding
+        run: python branding/apply_brand.py --apply
+
+      - name: Verify
+        run: python branding/apply_brand.py --verify
+
+      - name: Commit result
+        run: |
+          git config user.name "polaris-bot"
+          git config user.email "polaris-bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "没有需要提交的改动"
+            exit 0
+          fi
+          git commit -m "chore(brand): apply Polaris branding [skip ci]"
+          git push
