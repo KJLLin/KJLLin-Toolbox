@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   NUGET_PACKAGES: ${{ github.workspace }}\\.nuget\\packages
@@ -71,3 +71,16 @@ jobs:
           name: kjllin-toolbox-win-x64
           path: output/**
           if-no-files-found: error
+
+      - name: Publish rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          if (gh release view nightly 2>$null) {
+            gh release delete nightly --yes --cleanup-tag
+          }
+          gh release create nightly output/* `
+            --title "KJLLin Toolbox 自动构建" `
+            --notes "由 GitHub Actions 自动构建，未签名，首次运行需允许 SmartScreen。build #${{ github.run_number }}，commit ${{ github.sha }}。" `
+            --prerelease
