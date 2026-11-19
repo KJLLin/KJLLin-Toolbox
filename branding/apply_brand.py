@@ -1,4 +1,5 @@
-"""把 fork 后的 UniGetUI 改造成自己的商店（品牌 + 默认源 + 安装器身份）。
+#!/usr/bin/env python3
+"""把 fork 后的 UniGetUI 改造成自己的应用分发客户端（品牌 + 自有源 + 安装器身份）。
 
 用法：
     python branding/apply_brand.py --check    # 只报告将要改什么
@@ -17,9 +18,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-CONFIG_PATH = HERE / "polaris.json"
+CONFIG_PATH = HERE / "toolbox.json"
 
-# 改造范围：只动产品身份，不动业务逻辑
+# 改造范围：只动产品身份与源列表，不动业务逻辑
 ASSEMBLY = ROOT / "src" / "SharedAssemblyInfo.cs"
 MANIFEST = ROOT / "src" / "UniGetUI.Avalonia" / "app.manifest"
 INSTALLER = ROOT / "UniGetUI.iss"
@@ -35,7 +36,7 @@ report = []
 
 def load_config():
     if not CONFIG_PATH.exists():
-        print("缺少 branding/polaris.json")
+        print("缺少 branding/toolbox.json")
         sys.exit(2)
     return json.loads(CONFIG_PATH.read_text("utf-8"))
 
@@ -73,40 +74,81 @@ def transform_installer(text, cfg):
     return text
 
 
+def _source_entries(cfg, indent):
+    """按 Scoop.cs 里原有的写法生成 ManagerSource 列表项。"""
+    out = ""
+    for src in cfg.get("sources", []):
+        out += (
+            '%snew ManagerSource(\n'
+            '%s    this,\n'
+            '%s    "%s",\n'
+            '%s    new Uri("%s")\n'
+            '%s),\n'
+        ) % (indent, indent, indent, src["name"], indent, src["url"], indent)
+    return out
+
+
+KNOWN_RE = re.compile(r"KnownSources\s*=\s*\n(\s*)\[\n(.*?)\n(\s*)\],", re.S)
+DEFAULT_RE = re.compile(
+    r'(DefaultSource\s*=\s*new ManagerSource\(\n\s*this,\n\s*)"([^"]*)"(,\n\s*new Uri\(")([^"]*)"'
+)
+
+
 def transform_scoop(text, cfg):
-    """把私有 bucket 注册为 KnownSource；已存在则跳过。"""
-    names = [s["name"] for s in cfg.get("sources", [])]
-    if any('"%s"' % n in text for n in names):
-        report.append("  · Scoop 私有源已存在，跳过")
+    """only_own_sources=true 时，把 KnownSources 裁剪成只剩自有源。"""
+    sources = cfg.get("sources") or []
+    if not sources:
+        report.append("  ! 没有配置私有源，跳过 Scoop")
         return text
 
-    anchor = '''                    new ManagerSource(
+    if not cfg.get("only_own_sources"):
+        if any('"%s"' % s["name"] in text for s in sources):
+            report.append("  · Scoop 私有源已存在，跳过")
+            return text
+        anchor = '''                    new ManagerSource(
                         this,
                         "games",
                         new Uri("https://github.com/Calinou/scoop-games")
                     ),
                 ],'''
-    if anchor not in text:
-        report.append("  ! 找不到 Scoop KnownSources 锚点，未注入私有源")
-        return text
-
-    block = ""
-    for src in cfg.get("sources", []):
-        block += (
-            '                    new ManagerSource(\n'
-            '                        this,\n'
-            '                        "%s",\n'
-            '                        new Uri("%s")\n'
-            '                    ),\n' % (src["name"], src["url"])
-        )
-    new = text.replace(anchor, '''                    new ManagerSource(
+        if anchor not in text:
+            report.append("  ! 找不到 Scoop KnownSources 锚点，未注入私有源")
+            return text
+        block = _source_entries(cfg, "                    ")
+        text = text.replace(anchor, '''                    new ManagerSource(
                         this,
                         "games",
                         new Uri("https://github.com/Calinou/scoop-games")
                     ),
 %s                ],''' % block)
-    report.append("  · Scoop 私有源注入 %d 个" % len(cfg.get("sources", [])))
-    return new
+        report.append("  · Scoop 私有源注入 %d 个" % len(sources))
+        return text
+
+    match = KNOWN_RE.search(text)
+    if not match:
+        report.append("  ! 找不到 KnownSources 数组，未裁剪公共源")
+        return text
+
+    indent = match.group(1)
+    body = _source_entries(cfg, indent + "    ")
+    text = (
+        text[: match.start()]
+        + "KnownSources =\n%s[\n%s%s]," % (indent, body, match.group(3))
+        + text[match.end():]
+    )
+    removed = match.group(2).count("new ManagerSource")
+    report.append("  · Scoop 源列表：%d → %d（只留自有源）" % (removed, len(sources)))
+
+    first = sources[0]
+    default = DEFAULT_RE.search(text)
+    if default:
+        text = (
+            text[: default.start()]
+            + '%s"%s"%s%s"' % (default.group(1), first["name"], default.group(3), first["url"])
+            + text[default.end():]
+        )
+        report.append('  · 默认源 → "%s"' % first["name"])
+    return text
 
 
 # 语言包的一行形如   "English source key": "translated value",
@@ -114,7 +156,7 @@ def transform_scoop(text, cfg):
 _LINE = re.compile(r'^(\s*"(?:[^"\\]|\\.)*"\s*:\s*)"((?:[^"\\]|\\.)*)"(,?)\s*$')
 
 
-def _replace_value(value: str, cfg: dict) -> str:
+def _replace_value(value, cfg):
     product = cfg["product_name"]
     originals = set(cfg.get("replace_aliases", [])) | {"UniGetUI"} | {product}
     for old in sorted(originals, key=len, reverse=True):
@@ -125,7 +167,7 @@ def _replace_value(value: str, cfg: dict) -> str:
     return value
 
 
-def transform_languages(text: str, cfg: dict) -> str:
+def transform_languages(text, cfg):
     lines = []
     for line in text.split("\n"):
         match = _LINE.match(line)
@@ -133,8 +175,7 @@ def transform_languages(text: str, cfg: dict) -> str:
             lines.append(line)
             continue
         key_part, value, comma = match.group(1), match.group(2), match.group(3)
-        new_value = _replace_value(value, cfg)
-        lines.append('%s"%s"%s' % (key_part, new_value, comma))
+        lines.append('%s"%s"%s' % (key_part, _replace_value(value, cfg), comma))
     return "\n".join(lines)
 
 
@@ -169,7 +210,8 @@ def main():
             print("  -", item)
         return 0
 
-    print("品牌：%s / %s" % (cfg["product_name"], cfg.get("product_name_zh", "")))
+    print("品牌：%s" % cfg["product_name"])
+    print("自有源：%s" % ", ".join(s["name"] for s in cfg.get("sources", [])))
     print("模式：%s\n" % mode)
 
     apply_file(ASSEMBLY, transform_assembly, cfg, mode == "--apply")
@@ -184,6 +226,8 @@ def main():
         if mode == "--apply":
             shutil.copy2(BRAND_ICO, ICON_ICO)
         report.append("  %s 图标 icon.ico" % ("✓" if mode == "--apply" else "~"))
+    else:
+        report.append("  ! 未提供 branding/assets/icon.ico，跳过图标替换")
     if BRAND_PNG.exists() and BRAND_PNG != ICON_PNG:
         if mode == "--apply":
             shutil.copy2(BRAND_PNG, ICON_PNG)
