@@ -109,15 +109,33 @@ def transform_scoop(text, cfg):
     return new
 
 
-def transform_languages(text, cfg):
+# 语言包的一行形如   "English source key": "translated value",
+# key 是代码里 Translate() 查找用的原文，绝不改写；只改 value。
+_LINE = re.compile(r'^(\s*"(?:[^"\\]|\\.)*"\s*:\s*)"((?:[^"\\]|\\.)*)"(,?)\s*$')
+
+
+def _replace_value(value: str, cfg: dict) -> str:
     product = cfg["product_name"]
     originals = set(cfg.get("replace_aliases", [])) | {"UniGetUI"} | {product}
     for old in sorted(originals, key=len, reverse=True):
-        if old and old != product and old in text:
-            text = text.replace(old, product)
+        if old and old != product and old in value:
+            value = value.replace(old, product)
     for old_url, new_url in cfg.get("url_replacements", {}).items():
-        text = text.replace(old_url, new_url)
-    return text
+        value = value.replace(old_url, new_url)
+    return value
+
+
+def transform_languages(text: str, cfg: dict) -> str:
+    lines = []
+    for line in text.split("\n"):
+        match = _LINE.match(line)
+        if not match:
+            lines.append(line)
+            continue
+        key_part, value, comma = match.group(1), match.group(2), match.group(3)
+        new_value = _replace_value(value, cfg)
+        lines.append('%s"%s"%s' % (key_part, new_value, comma))
+    return "\n".join(lines)
 
 
 def apply_file(path, fn, cfg, apply_changes):
