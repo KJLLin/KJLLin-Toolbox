@@ -282,6 +282,16 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                         "games",
                         new Uri("https://github.com/Calinou/scoop-games")
                     ),
+                    new ManagerSource(
+                        this,
+                        "polaris",
+                        new Uri("https://github.com/KJLLin/polaris-bucket")
+                    ),
+                    new ManagerSource(
+                        this,
+                        "polaris-beta",
+                        new Uri("https://github.com/KJLLin/polaris-beta")
+                    ),
                 ],
                 DefaultSource = new ManagerSource(
                     this,

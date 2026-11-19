@@ -2,11 +2,11 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppVersion "3.3.7"
-#define MyAppName "UniGetUI"
-#define MyAppPublisher "Devolutions Inc."
+#define MyAppName "Polaris Store"
+#define MyAppPublisher "KJLLin"
 #define MyAppURL "https://github.com/Devolutions/UniGetUI"
 #define MyAppExeName "UniGetUI.exe"
-#define MyAppPublisherURL "https://devolutions.net/unigetui/"
+#define MyAppPublisherURL "https://github.com/KJLLin/Polaris-Store"
 #define MyAppCopyright "Copyright 2021-2026 " + MyAppPublisher
 #define AutostartComponentKey "Software\Microsoft\Active Setup\Installed Components\Devolutions.UniGetUI.Autostart"
 #define AutostartRemovalKey "Software\Microsoft\Active Setup\Installed Components\Devolutions.UniGetUI.Autostart.Removal"
@@ -23,7 +23,7 @@
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 UninstallDisplayName={#MyAppName}
-AppId={{889610CC-4337-4BDB-AC3B-4F21806C0BDE}
+AppId={{B7D3E1A4-6C2F-4A8E-9B57-2E4F1C8D3A96}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
