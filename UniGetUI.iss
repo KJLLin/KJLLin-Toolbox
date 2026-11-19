@@ -2,11 +2,11 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppVersion "3.3.7"
-#define MyAppName "Polaris Store"
+#define MyAppName "KJLLin Toolbox"
 #define MyAppPublisher "KJLLin"
 #define MyAppURL "https://github.com/Devolutions/UniGetUI"
 #define MyAppExeName "UniGetUI.exe"
-#define MyAppPublisherURL "https://github.com/KJLLin/Polaris-Store"
+#define MyAppPublisherURL "https://github.com/KJLLin/UniGetUI"
 #define MyAppCopyright "Copyright 2021-2026 " + MyAppPublisher
 #define AutostartComponentKey "Software\Microsoft\Active Setup\Installed Components\Devolutions.UniGetUI.Autostart"
 #define AutostartRemovalKey "Software\Microsoft\Active Setup\Installed Components\Devolutions.UniGetUI.Autostart.Removal"

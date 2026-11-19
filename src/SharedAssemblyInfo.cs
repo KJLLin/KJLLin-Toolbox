@@ -3,10 +3,10 @@ using System.Reflection;
 using System.Runtime.Versioning;
 #endif
 
-[assembly: AssemblyProduct("Polaris Store")]
-[assembly: AssemblyDescription("Polaris Store")]
-[assembly: AssemblyTitle("Polaris Store")]
-[assembly: AssemblyDefaultAlias("Polaris Store")]
+[assembly: AssemblyProduct("KJLLin Toolbox")]
+[assembly: AssemblyDescription("KJLLin Toolbox")]
+[assembly: AssemblyTitle("KJLLin Toolbox")]
+[assembly: AssemblyDefaultAlias("KJLLin Toolbox")]
 [assembly: AssemblyCompany("Devolutions Inc.")]
 [assembly: AssemblyCopyright("Copyright 2021-2026 Devolutions Inc.")]
 [assembly: AssemblyVersion("1.0.0.0")]

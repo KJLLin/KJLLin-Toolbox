@@ -234,69 +234,19 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                 [
                     new ManagerSource(
                         this,
-                        "main",
-                        new Uri("https://github.com/ScoopInstaller/Main")
+                        "toolbox",
+                        new Uri("https://github.com/KJLLin/KJLLin-Toolbox")
                     ),
                     new ManagerSource(
                         this,
-                        "extras",
-                        new Uri("https://github.com/ScoopInstaller/Extras")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "versions",
-                        new Uri("https://github.com/ScoopInstaller/Versions")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "nirsoft",
-                        new Uri("https://github.com/ScoopInstaller/Nirsoft")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "sysinternals",
-                        new Uri("https://github.com/niheaven/scoop-sysinternals")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "php",
-                        new Uri("https://github.com/ScoopInstaller/PHP")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "nerd-fonts",
-                        new Uri("https://github.com/matthewjberger/scoop-nerd-fonts")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "nonportable",
-                        new Uri("https://github.com/ScoopInstaller/Nonportable")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "java",
-                        new Uri("https://github.com/ScoopInstaller/Java")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "games",
-                        new Uri("https://github.com/Calinou/scoop-games")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "polaris",
-                        new Uri("https://github.com/KJLLin/polaris-bucket")
-                    ),
-                    new ManagerSource(
-                        this,
-                        "polaris-beta",
-                        new Uri("https://github.com/KJLLin/polaris-beta")
+                        "toolbox-beta",
+                        new Uri("https://github.com/KJLLin/KJLLin-Toolbox-Beta")
                     ),
                 ],
                 DefaultSource = new ManagerSource(
                     this,
-                    "main",
-                    new Uri("https://github.com/ScoopInstaller/Main")
+                    "toolbox",
+                    new Uri("https://github.com/KJLLin/KJLLin-Toolbox")
                 ),
             };
 
