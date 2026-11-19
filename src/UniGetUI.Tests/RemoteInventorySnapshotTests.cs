@@ -306,8 +306,8 @@ public sealed class RemoteInventorySnapshotTests
             completed.AddMinutes(2),
             [Row(dotnet, "dotnet-ef", null, "9.0.0", "10.0.0"), Row(winget, "Git.Git", "machine", "2.46.0", "2.47.1")],
             updateScanComplete ? scanned : [winget]);
-        IpcManagerInfo[] info = managers
-            .Select(manager => new IpcManagerInfo
+        IpcRemoteManagerInfo[] info = managers
+            .Select(manager => new IpcRemoteManagerInfo
             {
                 Name = manager.Name,
                 DisplayName = manager.DisplayName,

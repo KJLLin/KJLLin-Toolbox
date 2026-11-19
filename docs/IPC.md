@@ -75,6 +75,7 @@ On Windows, an unelevated GUI session separately attempts to register with the l
 Before sending registration data, UniGetUI verifies that the pipe server is the running Agent service in session 0.
 This connection is separate from the local IPC API and remains active when that API is disabled.
 The registration connection answers `GetInventorySnapshot` and `RescanInventory`, and runs `ExecutePackageOperation` through the Agent's package broker.
+After a lost connection it retries with a growing delay, which starts over only when the lost session had stayed registered for at least 30 seconds.
 
 ### Inventory snapshot
 
@@ -83,7 +84,8 @@ It fails unless that scan completed for every enabled and installed manager, so 
 `completedAt` is that scan's completion time.
 `updateCompletedAt`, `updates` and each row's `newVersion` come from the last completed update scan, and only when it also covers every expected manager; otherwise `updateCompletedAt` is null and `updates` is empty.
 Installations of one package that differ in reported scope are separate rows, and an update reporting a scope applies only to the row with that scope; an update without a scope applies only when exactly one installation matches.
-`sourceName` is always empty, and manager executable paths, arguments and health details are not sent.
+`sourceName` is always empty.
+Its `managers` items carry only a fixed set of fields, with `executablePath` and `executableArguments` empty and `health` at its unknown default, so a field added to the local manager endpoint is not sent to the Agent.
 Source entries with unsafe or ambiguous names are omitted, and source URLs are never sent.
 
 ### Inventory rescan
@@ -106,7 +108,7 @@ It rejects unknown or duplicate operation arguments before submission.
 It does not depend on the **Delegate package operations to the Devolutions Agent broker** setting (Settings → Administrator), which is the user's opt-in for local self-service through the broker; whether the machine accepts remote operations is the Agent's own configuration.
 It runs only for a manager the broker supports; Chocolatey is refused.
 WinGet runs in the requested user or machine scope, every other manager in user scope; a machine-scope request for another manager is refused.
-Update and uninstall act on the installation named by manager, package ID and the row's `reportedScope`; when the manager cannot select a scope from that value, UniGetUI's current installed list must hold exactly one installation with that manager and package ID, checked immediately before submission.
+Update and uninstall act on the installation named by manager, package ID and the row's `reportedScope`; when the manager cannot select a scope from that value, the last completed installed scan, the copy the Agent chose the row from, must hold exactly one installation with that manager and package ID, checked immediately before submission, so a load running meanwhile does not block the operation.
 Install needs a source; update uses the named source or the manager's default; uninstall uses none.
 Once the grant may have reached the broker, the result is `Unknown`, whatever the broker answered, because a response frame alone does not prove the operation's outcome.
 A request refused before anything is sent is `Failed`.

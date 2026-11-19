@@ -156,7 +156,6 @@ public class AgentRegistrationTests
             return true;
         }
     }
-
     private sealed class BlockedWriteStream : Stream
     {
         public bool Disposed { get; private set; }
@@ -324,6 +323,42 @@ public class AgentRegistrationTests
     private static string ErrorCode(JsonElement response) =>
         response.GetProperty("error").GetProperty("code").GetString()!;
 
+    private sealed class ManualClock : TimeProvider
+    {
+        public long Now;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override long GetTimestamp() => Now;
+    }
+
+    [Fact]
+    public void BackoffStartsOverOnlyAfterARegisteredSessionStayedUp()
+    {
+        var clock = new ManualClock();
+        var options = new AgentRegistrationOptions
+        {
+            MinBackoff = TimeSpan.FromSeconds(1),
+            StableSessionTime = TimeSpan.FromSeconds(30),
+        };
+        var client = new AgentRegistrationClient(
+            new FakeConnector(new FakeConnection(new BlockedWriteStream(), verified: false)),
+            new FakeBackend(),
+            options,
+            clock,
+            _ => { }
+        );
+        var grown = TimeSpan.FromSeconds(16);
+        long registeredAt = clock.GetTimestamp();
+
+        clock.Now += TimeSpan.FromSeconds(29).Ticks;
+        Assert.Equal(grown, client.BackoffAfterSession(grown, registeredAt));
+        Assert.Equal(grown, client.BackoffAfterSession(grown, null));
+
+        clock.Now += TimeSpan.FromSeconds(1).Ticks;
+        Assert.Equal(options.MinBackoff, client.BackoffAfterSession(grown, registeredAt));
+    }
+
     [Fact]
     public async Task FailedServerVerificationWritesNothingAndCloses()
     {
@@ -466,6 +501,8 @@ public class AgentRegistrationTests
                 IdleTimeout = TimeSpan.FromHours(1),
                 MinBackoff = second,
                 MaxBackoff = 4 * second,
+                // The fake clock does not advance while registered; the 30 s rule has its own test.
+                StableSessionTime = TimeSpan.Zero,
             },
             clock,
             message =>
