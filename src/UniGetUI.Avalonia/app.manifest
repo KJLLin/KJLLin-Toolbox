@@ -1,9 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <!-- This manifest is used on Windows only.
        Don't remove it as it might cause problems with window transparency and embedded controls.
        For more details visit https://learn.microsoft.com/en-us/windows/win32/sbscs/application-manifests -->
-  <assemblyIdentity version="1.0.0.0" name="UniGetUI.Avalonia.Desktop"/>
+  <assemblyIdentity version="1.0.0.0" name="Polaris.Store.Desktop"/>
 
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
@@ -13,7 +13,7 @@
   </compatibility>
 
   <!-- PerMonitorV2 DPI awareness is required for native child windows (e.g. WebView2).
-       Without this, Win32 NativeControlHost cannot create its HWND on Windows 10+. -->
+       Without it, Win32 NativeControlHost cannot create its HWND on Windows 10+. -->
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
       <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2, PerMonitor</dpiAwareness>

@@ -3,10 +3,10 @@ using System.Reflection;
 using System.Runtime.Versioning;
 #endif
 
-[assembly: AssemblyProduct("UniGetUI")]
-[assembly: AssemblyDescription("UniGetUI")]
-[assembly: AssemblyTitle("UniGetUI")]
-[assembly: AssemblyDefaultAlias("UniGetUI")]
+[assembly: AssemblyProduct("Polaris Store")]
+[assembly: AssemblyDescription("Polaris Store")]
+[assembly: AssemblyTitle("Polaris Store")]
+[assembly: AssemblyDefaultAlias("Polaris Store")]
 [assembly: AssemblyCompany("Devolutions Inc.")]
 [assembly: AssemblyCopyright("Copyright 2021-2026 Devolutions Inc.")]
 [assembly: AssemblyVersion("1.0.0.0")]
