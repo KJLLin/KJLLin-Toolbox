@@ -1,0 +1,24 @@
+{
+  "product_name": "KJLLin Toolbox",
+  "publisher": "KJLLin",
+  "website": "https://github.com/KJLLin/UniGetUI",
+  "repo": "https://github.com/KJLLin/UniGetUI",
+  "assembly_identity": "KJLLin.Toolbox.Desktop",
+  "app_id_guid": "B7D3E1A4-6C2F-4A8E-9B57-2E4F1C8D3A96",
+  "only_own_sources": true,
+  "sources": [
+    {
+      "name": "toolbox",
+      "url": "https://github.com/KJLLin/KJLLin-Toolbox"
+    },
+    {
+      "name": "toolbox-beta",
+      "url": "https://github.com/KJLLin/KJLLin-Toolbox-Beta"
+    }
+  ],
+  "replace_aliases": ["WingetUI", "Komi Store", "Polaris Store", "北极星商店"],
+  "url_replacements": {
+    "https://devolutions.net/unigetui/": "https://github.com/KJLLin/UniGetUI",
+    "https://www.unigetui.com": "https://github.com/KJLLin/UniGetUI"
+  }
+}
