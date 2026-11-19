@@ -58,10 +58,11 @@ def transform_assembly(text, cfg):
 
 
 def transform_manifest(text, cfg):
+    # 只改 assemblyIdentity 的 name，兼容任意历史值（改过名也能再次生效）
     return sub_once(
         text,
-        r'name="[^"]*\.Avalonia\.Desktop"',
-        'name="%s"' % cfg["assembly_identity"],
+        r'(<assemblyIdentity[^>]*?name=")([^"]*)(")',
+        lambda m: m.group(1) + cfg["assembly_identity"] + m.group(3),
         "应用清单身份",
     )
 

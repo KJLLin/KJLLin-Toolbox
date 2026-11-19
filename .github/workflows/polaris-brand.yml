@@ -1,4 +1,4 @@
-name: polaris-brand
+name: kjllin-toolbox-brand
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
       - name: Restore upstream language keys
         run: git checkout origin/main -- src/Languages
 
-      - name: Apply Polaris branding
+      - name: Apply KJLLin Toolbox branding
         run: python branding/apply_brand.py --apply
 
       - name: Verify
@@ -40,5 +40,5 @@ jobs:
             echo "没有需要提交的改动"
             exit 0
           fi
-          git commit -m "chore(brand): apply Polaris branding [skip ci]"
+          git commit -m "chore(brand): apply KJLLin Toolbox branding [skip ci]"
           git push
