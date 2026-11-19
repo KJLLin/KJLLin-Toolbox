@@ -34,22 +34,33 @@ python branding/apply_brand.py --verify   # 查残留
 
 向 `polaris` 分支推送 `branding/**` 时，`.github/workflows/polaris-brand.yml` 会先在 CI 里把语言包还原成上游版本再执行改造并提交，所以 60 个语言包、850 行的 `Scoop.cs` 都不需要本地处理。
 
-## 构建
+## 自动构建（不需要本地环境）
+
+`.github/workflows/kjllin-toolbox-build.yml` 在 `windows-latest` 上跑上游自带的 `scripts/build.ps1`：还原 → 发布 → Inno Setup 打包 → 校验和 → 上传产物 → 发布滚动 Release。
+
+下载地址（每次 build 都会覆盖）：
+
+- 安装包：`https://github.com/KJLLin/UniGetUI/releases/download/nightly/KJLLin.Toolbox.Installer.x64.exe`
+- 便携 zip：`https://github.com/KJLLin/UniGetUI/releases/download/nightly/KJLLin.Toolbox.x64.zip`
+- 校验和：`https://github.com/KJLLin/UniGetUI/releases/download/nightly/checksums.x64.txt`
+
+触发方式：推送到 `polaris` 分支的 `src/**`、`branding/**`、`UniGetUI.iss`、`global.json` 或该 workflow 文件；也可以在 Actions 页面手动 `workflow_dispatch`。
+
+## 本地构建
 
 ```powershell
-# 需要 .NET SDK + VS 生成工具
-dotnet build src/UniGetUI.Avalonia/UniGetUI.Avalonia.csproj -c Release
+# 需要 .NET SDK 10 + VS 生成工具
+pwsh ./scripts/build.ps1 -Configuration Release -Platform x64
 
-# 安装包（Inno Setup 6）
-iscc UniGetUI.iss
+# 或只要编译
+dotnet build src/UniGetUI.Avalonia/UniGetUI.Avalonia.csproj -c Release
 ```
 
 ## 还需要你本机做的
 
 1. **图标**：`branding/assets/` 目前为空，客户端仍是上游图标。放 `icon.ico` / `icon.png` 后推一次即可替换。
-2. **编译验证**：文本改造已逐项核对，但编译与打包必须在 Windows 上跑一遍。
-3. **签名**：没有代码签名证书的话，用户首次运行会被 SmartScreen 拦截。
-4. **发布二进制**：`toolbox` / `toolbox-beta` 里的清单指向 `KJLLin/HPCL`、`KJLLin/ClipFlow` 的 Release 资产，这些 Release 需要真实上传对应 zip，否则安装会 404。
+2. **签名**：CI 构建会临时去掉 `SignTool=azsign`。要消掉 SmartScreen 警告，得买或自签一张证书，再把 `scripts/sign.ps1` 需要的签名配置补上。
+3. **发布二进制**：`toolbox` / `toolbox-beta` 里的清单指向 `KJLLin/HPCL`、`KJLLin/ClipFlow` 的 Release 资产，这些 Release 需要真实上传对应 zip，否则安装会 404。
 
 ## 许可
 
