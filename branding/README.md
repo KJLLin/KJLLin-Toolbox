@@ -25,3 +25,7 @@
 ```powershell
 powershell -ExecutionPolicy Bypass -File InstallerExtras\EnsureScoop.ps1 -BucketUrls 'toolbox=https://github.com/KJLLin/KJLLin-Toolbox'
 ```
+
+## 构建
+
+推送到 `polaris` 且改动命中 `branding/**`、`src/**`、`UniGetUI.iss`、`global.json` 时会自动构建；机器人带 `[skip ci]` 的品牌提交不会触发，需要再推一次改动才能真正编译。
