@@ -8,7 +8,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
     /// <summary>列出从自有 Scoop bucket 装的应用，让它们在 Windows「应用和功能」里可卸载。</summary>
     internal static class ScoopUninstallEntries
     {
-        private const string Root = @"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
+        private const string Root = @"Software\Microsoft\Windows\CurrentVersion\Uninstall";
         private const string Prefix = "KJLLin.Toolbox.";
         private static readonly string[] Own = ["toolbox", "toolbox-beta"];
 
@@ -69,7 +69,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                     if (bin is not null && File.Exists(Path.Join(current, bin)))
                         icon = Path.Join(current, bin);
 
-                    RegistryKey? key = Registry.CurrentUser.CreateSubKey($@"{Root}\\{Prefix}{name}", true);
+                    RegistryKey? key = Registry.CurrentUser.CreateSubKey($@"{Root}\{Prefix}{name}", true);
                     if (key is null)
                         continue;
 
