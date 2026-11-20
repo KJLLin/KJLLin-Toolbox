@@ -31,6 +31,9 @@ jobs:
       - name: Patch installer and start page
         run: python branding/patch_installer.py --apply
 
+      - name: Patch Scoop source scoping
+        run: python branding/patch_sources.py --apply
+
       - name: Verify
         run: python branding/apply_brand.py --verify
 
