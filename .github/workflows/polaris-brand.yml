@@ -28,6 +28,9 @@ jobs:
       - name: Apply KJLLin Toolbox branding
         run: python branding/apply_brand.py --apply
 
+      - name: Patch installer and start page
+        run: python branding/patch_installer.py --apply
+
       - name: Verify
         run: python branding/apply_brand.py --verify
 
@@ -37,7 +40,7 @@ jobs:
           git config user.email "polaris-bot@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then
-            echo "没有需要提交的改动"
+            echo "no changes to commit"
             exit 0
           fi
           git commit -m "chore(brand): apply KJLLin Toolbox branding [skip ci]"
