@@ -7,6 +7,8 @@
   "app_id_guid": "B7D3E1A4-6C2F-4A8E-9B57-2E4F1C8D3A96",
   "install_dir": "KJLLin Toolbox",
   "only_own_sources": true,
+  "bootstrap_scoop": true,
+  "startup_page": "discover",
   "ui_replacements": {
     "Devolutions UniGetUI": "KJLLin Toolbox"
   },
