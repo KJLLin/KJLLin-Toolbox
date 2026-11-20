@@ -77,6 +77,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
         internal IReadOnlyList<IManagerSource> ParseSources(IEnumerable<string> lines)
         {
             List<ManagerSource> sources = [];
+            var scoop = Manager as Scoop;
             IReadOnlyList<int>? columns = null;
 
             foreach (string rawLine in lines)
@@ -104,6 +105,11 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                     continue;
                 }
 
+                if (scoop is not null && !scoop.ShowThirdPartySources && !scoop.IsOwnSource(name))
+                {
+                    continue;
+                }
+
                 try
                 {
                     Uri url = BuildSourceUrl(name, source);
@@ -124,6 +130,11 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                 {
                     Logger.Warn(e);
                 }
+            }
+
+            if (scoop is not null && scoop.ShowThirdPartySources)
+            {
+                return sources.OrderBy(item => scoop.IsOwnSource(item.Name) ? 0 : 1).ToList();
             }
 
             return sources;

@@ -256,6 +256,25 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             FindBucketManifest = FindBucketManifestOnDisk;
         }
 
+        /// <summary>
+        /// Whether packages from Scoop buckets the client does not own may be listed too.
+        /// Off by default, so the store only shows its own catalogs; the user can turn it
+        /// on from Settings ("Scoop sources").
+        /// </summary>
+        internal bool ShowThirdPartySources => Settings.Get(Settings.K.ScoopShowAllSources);
+
+        internal bool IsOwnSource(string? name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return false;
+            foreach (var source in Properties.KnownSources)
+            {
+                if (string.Equals(source.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+
         private (string Bucket, string Version)? FindBucketManifestOnDisk(string id)
         {
             if (!CoreTools.IsValidPackageIdentifier(id) || id.Contains('/'))
@@ -315,6 +334,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
         {
             List<Package> packages = [];
             IManagerSource source = Properties.DefaultSource;
+            bool skipSource = false;
 
             foreach (string line in lines)
             {
@@ -322,10 +342,16 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                 {
                     string sourceName = line.Split(" ")[0].Replace("'", "");
                     source = SourcesHelper.Factory.GetSourceOrDefault(sourceName);
+                    skipSource = !ShowThirdPartySources && !IsOwnSource(sourceName);
                     continue;
                 }
 
                 if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                if (skipSource)
                 {
                     continue;
                 }
@@ -358,6 +384,21 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                         this
                     )
                 );
+            }
+
+            if (ShowThirdPartySources)
+            {
+                // Own catalogs win: when the same app is served by several buckets,
+                // keep the entry that comes from one of our sources.
+                Dictionary<string, Package> preferred = new(StringComparer.OrdinalIgnoreCase);
+                foreach (Package package in packages
+                    .OrderBy(candidate => IsOwnSource(candidate.Source.Name) ? 0 : 1)
+                    .ThenBy(candidate => candidate.Id))
+                {
+                    if (!preferred.ContainsKey(package.Id))
+                        preferred[package.Id] = package;
+                }
+                return preferred.Values.ToList();
             }
 
             return packages;
@@ -421,6 +462,8 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                     )
                 )
                 {
+                    if (!ShowThirdPartySources && !IsOwnSource(installedPackage.Source.Name))
+                        continue;
                     OverridenInstallationOptions options = new(installedPackage.OverridenOptions.Scope);
                     packages.Add(
                         new Package(

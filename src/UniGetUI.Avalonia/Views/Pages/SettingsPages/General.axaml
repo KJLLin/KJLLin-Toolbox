@@ -53,6 +53,17 @@
                                    CornerRadius="0,0,8,8"
                                    BorderThickness="1,0,1,1"/>
 
+            <settings:TranslatedTextBlock Text="Scoop sources"
+                                          FontSize="14"
+                                          FontWeight="SemiBold"
+                                          Margin="44,32,4,8"
+                                          automation:AutomationProperties.HeadingLevel="2"/>
+
+            <settings:CheckboxCard x:Name="ShowAllScoopSourcesCard"
+                                   SettingName="ScoopShowAllSources"
+                                   Text="显示上游 Scoop 源（main、extras 等，非自有源；自有源仍优先）"
+                                   CornerRadius="8"/>
+
             <settings:TranslatedTextBlock Text="Telemetry"
                                           FontSize="14"
                                           FontWeight="SemiBold"
