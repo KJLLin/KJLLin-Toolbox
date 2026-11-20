@@ -469,6 +469,7 @@ Type: files; Name: "{app}\*.pri"
 Type: files; Name: "{app}\*.xbf"
 
 [Files]
+Source: "InstallerExtras\EnsureScoop.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall ignoreversion
 ; Deploy installer for autorepair jobs (unless disabled)
 Source: "{srcexe}"; DestDir: "{app}"; DestName: "UniGetUI.Installer.exe"; Flags: external ignoreversion; Tasks: regularinstall; Check: not CmdLineParamExists('/NoDeployInstaller');
 ; Deploy integrity tree
@@ -487,6 +488,7 @@ Name: "{autostartmenu}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUser
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: regularinstall\desktopicon; Check: not CmdLineParamExists('/NoDesktopShortcut')
 
 [Run]
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File -NonInteractive ""{tmp}\EnsureScoop.ps1"" -BucketUrls 'toolbox=https://github.com/KJLLin/KJLLin-Toolbox;toolbox-beta=https://github.com/KJLLin/KJLLin-Toolbox-Beta'"; StatusMsg: "Preparing Scoop and the KJLLin Toolbox sources..."; WorkingDir: {app}; Flags: runhidden runasoriginaluser; Check: not CmdLineParamExists('/NoScoop')
 ; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File -NonInteractive ""{tmp}\EnsureWinGet.ps1"""; StatusMsg: "Ensuring WinGet is properly installed... (this may take a while)"; WorkingDir: {app}; Check: not CmdLineParamExists('/NoWinGet'); Flags: runhidden
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: runasoriginaluser nowait postinstall; Check: ShouldLaunchInForegroundAfterInstall;
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--daemon"; Flags: runasoriginaluser nowait postinstall; Check: ShouldLaunchInBackgroundAfterInstall;

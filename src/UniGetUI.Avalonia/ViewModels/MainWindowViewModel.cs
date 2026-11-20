@@ -916,7 +916,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "settings" => PageType.Settings,
             // A usable admin-curated catalog is the simplest starting point, so it wins over the default pages.
             _ when Sidebar.HasUsableCatalog => PageType.Catalog,
-            _ => UpgradablePackagesLoader.Instance is { } l && l.Count() > 0 ? PageType.Updates : PageType.Discover,
+            _ => PageType.Discover,
         };
         NavigateTo(type);
     }
