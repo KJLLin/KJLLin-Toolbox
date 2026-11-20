@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """把 fork 后的 UniGetUI 改造成自己的应用分发客户端（品牌 + 自有源 + 安装器身份）。
 
 用法：
@@ -71,7 +70,15 @@ def transform_installer(text, cfg):
     text = sub_once(text, r'#define MyAppName "[^"]*"', '#define MyAppName "%s"' % cfg["product_name"], "安装器名称")
     text = sub_once(text, r'#define MyAppPublisher "[^"]*"', '#define MyAppPublisher "%s"' % cfg["publisher"], "发行方")
     text = sub_once(text, r'#define MyAppPublisherURL "[^"]*"', '#define MyAppPublisherURL "%s"' % cfg["website"], "发行方网址")
+    text = sub_once(text, r'#define MyAppURL "[^"]*"', '#define MyAppURL "%s"' % cfg["website"], "应用网址")
     text = sub_once(text, r"AppId=\{\{[^}]*\}", "AppId={{%s}" % cfg["app_id_guid"], "安装器 AppId")
+    if cfg.get("install_dir"):
+        text = sub_once(
+            text,
+            r'DefaultDirName="\{[^}]*\}\\[^"]*"',
+            lambda m: 'DefaultDirName="{autopf64}\\%s"' % cfg["install_dir"],
+            "默认安装目录",
+        )
     return text
 
 
@@ -180,6 +187,39 @@ def transform_languages(text, cfg):
     return "\n".join(lines)
 
 
+def transform_ui_strings(text, cfg):
+    """界面里硬编码的品牌字面量（窗口 Title、About 页、欢迎页）不走语言包。
+
+    只替换配置里明确列出的完整短语，绝不裸替换 "UniGetUI"——
+    否则会改到 using:UniGetUI 命名空间、x:Class 和资源键，直接编译失败。
+    """
+    for old, new in cfg.get("ui_replacements", {}).items():
+        if old and old in text:
+            text = text.replace(old, new)
+    return text
+
+
+def apply_ui_pass(cfg, apply_changes):
+    scanned = 0
+    changed = 0
+    for pattern in ("*.axaml", "*.xaml", "*.cs"):
+        for path in (ROOT / "src").rglob(pattern):
+            if not path.is_file():
+                continue
+            scanned += 1
+            try:
+                original = path.read_text("utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            updated = transform_ui_strings(original, cfg)
+            if updated != original:
+                changed += 1
+                if apply_changes:
+                    path.write_text(updated, "utf-8")
+                    report.append("  ✓ %s" % path.relative_to(ROOT))
+    report.append("  · 界面字面量：扫描 %d 个文件，命中 %d 个" % (scanned, changed))
+
+
 def apply_file(path, fn, cfg, apply_changes):
     if not path.exists():
         return
@@ -222,6 +262,8 @@ def main():
 
     for path in sorted(LANG_DIR.glob("lang_*.json")):
         apply_file(path, transform_languages, cfg, mode == "--apply")
+
+    apply_ui_pass(cfg, mode == "--apply")
 
     if BRAND_ICO.exists() and BRAND_ICO != ICON_ICO:
         if mode == "--apply":
