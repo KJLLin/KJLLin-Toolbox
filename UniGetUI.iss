@@ -4,7 +4,7 @@
 #define MyAppVersion "3.3.7"
 #define MyAppName "KJLLin Toolbox"
 #define MyAppPublisher "KJLLin"
-#define MyAppURL "https://github.com/Devolutions/UniGetUI"
+#define MyAppURL "https://github.com/KJLLin/UniGetUI"
 #define MyAppExeName "UniGetUI.exe"
 #define MyAppPublisherURL "https://github.com/KJLLin/UniGetUI"
 #define MyAppCopyright "Copyright 2021-2026 " + MyAppPublisher
@@ -39,7 +39,7 @@ VersionInfoDescription={#MyAppName} Installer
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoCopyright={#MyAppCopyright}
 AppCopyright={#MyAppCopyright}
-DefaultDirName="{autopf64}\UniGetUI"
+DefaultDirName="{autopf64}\KJLLin Toolbox"
 DisableProgramGroupPage=yes
 DisableDirPage=no
 DirExistsWarning=no

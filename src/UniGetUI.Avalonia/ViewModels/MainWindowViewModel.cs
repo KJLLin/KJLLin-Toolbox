@@ -375,7 +375,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     // ─── Title bar ───────────────────────────────────────────────────────────
-    public const string AppTitle = "Devolutions UniGetUI";
+    public const string AppTitle = "KJLLin Toolbox";
 
     // Mirrors WinUI behavior: the version appears next to the app name only when
     // the ShowVersionNumberOnTitlebar setting is enabled (the setting is gated
