@@ -8,6 +8,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
     /// <summary>
     /// 精选第三方应用名单，来源是 KJLLin-Toolbox 仓库根目录的 curated.json。
     /// 启动时读本地缓存，后台拉远端刷新（每 6 小时一次），拉不到就用代码里内置的名单。
+    /// 若存在本地覆盖文件 curated.override.json，则以它为准并停止拉取远端。
     /// </summary>
     internal static class CuratedCatalog
     {
@@ -28,6 +29,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             try
             {
                 LoadCache();
+                LoadOverride();
             }
             catch (Exception e)
             {
@@ -71,6 +73,12 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
 
         private static async Task RefreshAsync()
         {
+            if (LoadOverride())
+            {
+                // 本地覆盖文件存在时以它为准，不再拉远端
+                return;
+            }
+
             using HttpClient client = new() { Timeout = TimeSpan.FromSeconds(20) };
             string body = await client.GetStringAsync(RemoteUrl);
             string[] names = Parse(body);
@@ -111,6 +119,32 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             }
         }
 
+        /// <summary>
+        /// 本地覆盖名单（%LOCALAPPDATA%\\KJLLin Toolbox\\curated.override.json），
+        /// 给测试和开发用：存在即生效，优先于远端与缓存。返回是否生效。
+        /// </summary>
+        private static bool LoadOverride()
+        {
+            try
+            {
+                string path = OverridePath();
+                if (!File.Exists(path))
+                    return false;
+
+                string[] names = Parse(File.ReadAllText(path));
+                if (names.Length == 0)
+                    return false;
+
+                _names = names;
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logger.Warn(e);
+                return false;
+            }
+        }
+
         private static void LoadCache()
         {
             string path = CachePath();
@@ -134,6 +168,15 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             {
                 Logger.Warn(e);
             }
+        }
+
+        private static string OverridePath()
+        {
+            return Path.Join(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "KJLLin Toolbox",
+                "curated.override.json"
+            );
         }
 
         private static string CachePath()
