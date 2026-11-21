@@ -34,9 +34,19 @@
 
 `ScoopBucketRefresher`（在 Avalonia 工程里）启动后会在后台跑一次 `scoop update`，让精选应用的版本说明不过期；成功跑过之后 6 小时内不再重复（记录在 `%LOCALAPPDATA%\KJLLin Toolbox\last-bucket-refresh.txt`）。设置 → 包管理器 → Scoop 里有一个「刷新 Scoop 源」按钮，点一下立刻强制刷新，按钮文字会变成「刷新中…」→「完成 / 失败」。
 
+## bucket 镜像与回退
+
+`EnsureScoop.ps1` 的 `-BucketUrls` 支持给同一个 bucket 配多个地址，用 `|` 分隔，按顺序尝试，成功即停；失败的半成品会自动 `scoop bucket rm` 清掉再试下一个。当前顺序是 Gitee 镜像优先、GitHub 兜底：
+
+```
+toolbox=https://gitee.com/kjllin/kjllin-toolbox|https://github.com/KJLLin/KJLLin-Toolbox
+```
+
+Gitee 侧用「导入 GitHub 仓库」建镜像即可（公开仓库免费），仓库名保持 `kjllin-toolbox` / `kjllin-toolbox-beta`，代码里的地址就不用改。
+
 ## 国内镜像
 
-精选名单优先走 jsDelivr 的 GitHub 通道（`cdn.jsdelivr.net/gh/KJLLin/KJLLin-Toolbox@main/curated.json`），失败再走 `ghfast.top` 加速，最后才直连 raw.githubusercontent.com。Scoop 自身的 bucket clone 和 GitHub release 下载没有稳定可用的国内镜像接口，仍走直连。
+精选名单优先走 Gitee raw，其次 jsDelivr 的 GitHub 通道（`cdn.jsdelivr.net/gh/KJLLin/KJLLin-Toolbox@main/curated.json`），失败再走 `ghfast.top` 加速，最后才直连 raw.githubusercontent.com。Scoop 自身的 bucket clone 和 GitHub release 下载没有稳定可用的国内镜像接口，仍走直连。
 
 ## 系统卸载入口
 

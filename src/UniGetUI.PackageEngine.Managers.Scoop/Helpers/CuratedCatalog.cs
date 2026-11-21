@@ -15,6 +15,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
         // 国内优先：jsDelivr 的 GitHub 通道，失败再走加速代理，最后直连。
         private static readonly string[] Mirrors =
         [
+            "https://gitee.com/kjllin/kjllin-toolbox/raw/main/curated.json",
             "https://cdn.jsdelivr.net/gh/KJLLin/KJLLin-Toolbox@main/curated.json",
             "https://ghfast.top/https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox/main/curated.json",
             "https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox/main/curated.json",
