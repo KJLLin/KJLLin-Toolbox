@@ -43,6 +43,15 @@ jobs:
       - name: Patch uninstall request hooks
         run: python branding/patch_uninstall_hooks.py --apply
 
+      - name: Patch curated catalog source
+        run: python branding/patch_curated_remote.py --apply
+
+      - name: Patch developer options
+        run: python branding/patch_developer_mode.py --apply
+
+      - name: Bundle the Scoop installer
+        run: python branding/patch_scoop_bundle.py --apply
+
       - name: Verify
         run: python branding/apply_brand.py --verify
 

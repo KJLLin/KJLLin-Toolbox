@@ -18,7 +18,16 @@ $shim = Join-Path $env:USERPROFILE 'scoop\shims\scoop.cmd'
 if (-not (Test-Path -LiteralPath $shim)) {
   Say 'Installing Scoop for the current user'
   try { Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force -ErrorAction Stop } catch { Say ('policy: ' + $_.Exception.Message) }
-  try { Invoke-Expression ('& {' + (Invoke-RestMethod -Uri 'https://get.scoop.sh') + '}') } catch { Say ('install failed: ' + $_.Exception.Message) }
+  $bundledInstaller = Join-Path $PSScriptRoot 'scoop-install.ps1'
+  try {
+    if (Test-Path -LiteralPath $bundledInstaller) {
+      Say 'Running the Scoop installer bundled with KJLLin Toolbox'
+      Invoke-Expression ('& {' + (Get-Content -LiteralPath $bundledInstaller -Raw) + '}')
+    } else {
+      Say 'Bundled Scoop installer missing, downloading get.scoop.sh'
+      Invoke-Expression ('& {' + (Invoke-RestMethod -Uri 'https://get.scoop.sh') + '}')
+    }
+  } catch { Say ('install failed: ' + $_.Exception.Message) }
 }
 if (-not (Test-Path -LiteralPath $shim)) { Say 'Scoop unavailable; leaving the install untouched'; exit 0 }
 

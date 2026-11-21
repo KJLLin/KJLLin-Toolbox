@@ -45,6 +45,12 @@ jobs:
       - name: Install Inno Setup 6
         run: choco install innosetup --no-progress -y
 
+      - name: Bundle Scoop installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path InstallerExtras | Out-Null
+          Invoke-WebRequest -Uri "https://get.scoop.sh" -OutFile "InstallerExtras/scoop-install.ps1" -UseBasicParsing
+
       - name: Restore
         working-directory: src
         run: dotnet restore UniGetUI.Windows.slnx
@@ -63,7 +69,6 @@ jobs:
           if (Test-Path "$out/UniGetUI.Installer.x64.exe") {
             Move-Item "$out/UniGetUI.Installer.x64.exe" "$out/KJLLin.Toolbox.Installer.x64.exe" -Force
           }
-          # 重算校验和，避免文件里还是重命名前的旧名字
           if (Test-Path "$out/checksums.x64.txt") { Remove-Item "$out/checksums.x64.txt" -Force }
           Get-ChildItem $out -File | Where-Object { $_.Name -notlike "checksums.*.txt" } | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
