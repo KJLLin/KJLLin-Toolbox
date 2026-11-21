@@ -30,9 +30,17 @@
 
 `patch_managers.py` 把 `PEInterface.CreateManagers()` 的候选列表改成只有 `Scoop`；`remove_legacy_managers.py` 更进一步，把这七个管理器项目连同它们的 csproj 引用、PEInterface 字段、设置页分支、测试一起删掉，仓库里不再有它们的代码：Npm、Pip、.NET Tool、PowerShell Gallery、Cargo、Bun、vcpkg。PowerShell 7 那个管理器（`PowerShell7`）保留，它只依赖 Generic.NuGet。
 
+## 刷新 Scoop 源
+
+`ScoopBucketRefresher`（在 Avalonia 工程里）启动后会在后台跑一次 `scoop update`，让精选应用的版本说明不过期；成功跑过之后 6 小时内不再重复（记录在 `%LOCALAPPDATA%\KJLLin Toolbox\last-bucket-refresh.txt`）。设置 → 包管理器 → Scoop 里有一个「刷新 Scoop 源」按钮，点一下立刻强制刷新，按钮文字会变成「刷新中…」→「完成 / 失败」。
+
+## 国内镜像
+
+精选名单优先走 jsDelivr 的 GitHub 通道（`cdn.jsdelivr.net/gh/KJLLin/KJLLin-Toolbox@main/curated.json`），失败再走 `ghfast.top` 加速，最后才直连 raw.githubusercontent.com。Scoop 自身的 bucket clone 和 GitHub release 下载没有稳定可用的国内镜像接口，仍走直连。
+
 ## 系统卸载入口
 
-`ScoopUninstallEntries.cs` 每 60 秒把自有 bucket 的应用镜像到 `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\KJLLin.Toolbox.<app>`，卸载字符串是 `"<当前 exe>" --scoop-uninstall <app>`。
+`ScoopUninstallEntries.cs` 每 60 秒把 Toolbox 装的应用镜像到 `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\KJLLin.Toolbox.<app>`：自有 bucket 的全部应用，加上精选名单里来自 `main` / `extras` / `versions` 的应用；会写 DisplayName、DisplayVersion、Publisher、InstallLocation、DisplayIcon、InstallDate、Comments、URLInfoAbout，用户级和全局两个 Scoop 根目录都会扫。卸载字符串是 `"<当前 exe>" --scoop-uninstall <app>`。
 
 `patch_uninstall_hooks.py` 把这个参数接到 `App.StartupAsync` 和次级实例处理里，于是点「卸载」会拉起 Toolbox、弹确认框，确认后才跑 `scoop uninstall` 并删除注册表项。
 

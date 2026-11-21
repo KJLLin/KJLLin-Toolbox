@@ -263,6 +263,8 @@ public partial class App : Application
     private static async Task StartupAsync(MainWindow mainWindow, string[] args)
     {
         _ = UninstallRequestHandler.HandleAsync(mainWindow, args);
+        // Bucket index refresh runs after startup so curated apps see fresh versions.
+        ScoopBucketRefresher.StartInBackground();
         // Show crash report from the previous session and wait for the user
         // to dismiss it before continuing with normal startup.
         if (File.Exists(CrashHandler.PendingCrashFile))

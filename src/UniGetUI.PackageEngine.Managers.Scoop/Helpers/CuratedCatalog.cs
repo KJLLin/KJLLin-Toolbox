@@ -12,8 +12,13 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
     /// </summary>
     internal static class CuratedCatalog
     {
-        private const string RemoteUrl =
-            "https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox/main/curated.json";
+        // 国内优先：jsDelivr 的 GitHub 通道，失败再走加速代理，最后直连。
+        private static readonly string[] Mirrors =
+        [
+            "https://cdn.jsdelivr.net/gh/KJLLin/KJLLin-Toolbox@main/curated.json",
+            "https://ghfast.top/https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox/main/curated.json",
+            "https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox/main/curated.json",
+        ];
 
         private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan RefreshInterval = TimeSpan.FromHours(6);
@@ -80,13 +85,25 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             }
 
             using HttpClient client = new() { Timeout = TimeSpan.FromSeconds(20) };
-            string body = await client.GetStringAsync(RemoteUrl);
-            string[] names = Parse(body);
-            if (names.Length == 0)
-                return;
 
-            _names = names;
-            SaveCache(body);
+            foreach (string mirror in Mirrors)
+            {
+                try
+                {
+                    string body = await client.GetStringAsync(mirror);
+                    string[] names = Parse(body);
+                    if (names.Length == 0)
+                        continue;
+
+                    _names = names;
+                    SaveCache(body);
+                    return;
+                }
+                catch (Exception e)
+                {
+                    Logger.Warn($"[Toolbox] curated list mirror failed ({mirror}): {e.Message}");
+                }
+            }
         }
 
         private static string[] Parse(string json)

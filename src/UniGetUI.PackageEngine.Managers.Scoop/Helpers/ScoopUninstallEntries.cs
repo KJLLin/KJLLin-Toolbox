@@ -5,12 +5,16 @@ using UniGetUI.Core.Logging;
 
 namespace UniGetUI.PackageEngine.Managers.ScoopManager
 {
-    /// <summary>列出从自有 Scoop bucket 装的应用，让它们在 Windows「应用和功能」里可卸载。</summary>
+    /// <summary>
+    /// 把 Toolbox 装的应用镜像到 Windows「应用和功能」：自有 bucket 的全部应用，加上精选名单里
+    /// 来自上游 main / extras / versions 的应用。卸载字符串统一交回 Toolbox 弹确认框。
+    /// </summary>
     internal static class ScoopUninstallEntries
     {
         private const string Root = @"Software\Microsoft\Windows\CurrentVersion\Uninstall";
         private const string Prefix = "KJLLin.Toolbox.";
         private static readonly string[] Own = ["toolbox", "toolbox-beta"];
+        private static readonly string[] CuratedBuckets = ["main", "extras", "versions"];
 
         [ModuleInitializer]
         internal static void Bootstrap()
@@ -39,11 +43,17 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
 
         internal static void Sync()
         {
-            string? apps = AppsRoot();
-            if (apps is null)
-                return;
-
             HashSet<string> keep = new(StringComparer.OrdinalIgnoreCase);
+            foreach (string apps in AppsRoots())
+            {
+                SyncRoot(apps, keep);
+            }
+
+            Prune(keep);
+        }
+
+        private static void SyncRoot(string apps, HashSet<string> keep)
+        {
             foreach (string dir in Directory.EnumerateDirectories(apps))
             {
                 string name = Path.GetFileName(dir);
@@ -57,7 +67,14 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                         continue;
 
                     string? bucket = Str(Path.Join(current, "install.json"), "bucket");
-                    if (bucket is null || !Own.Contains(bucket, StringComparer.OrdinalIgnoreCase))
+                    if (bucket is null)
+                        continue;
+
+                    bool isOwn = Own.Contains(bucket, StringComparer.OrdinalIgnoreCase);
+                    bool isCurated =
+                        CuratedBuckets.Contains(bucket, StringComparer.OrdinalIgnoreCase)
+                        && CuratedCatalog.Contains(name);
+                    if (!isOwn && !isCurated)
                         continue;
 
                     string manifest = Path.Join(current, "manifest.json");
@@ -77,13 +94,18 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                     {
                         key.SetValue("DisplayName", title);
                         key.SetValue("DisplayVersion", version ?? "0.0.0");
-                        key.SetValue("Publisher", "KJLLin");
+                        key.SetValue("Publisher", isOwn ? "KJLLin" : "Scoop");
                         key.SetValue("InstallLocation", current);
                         key.SetValue("DisplayIcon", icon);
                         key.SetValue("UninstallString", Cmd(name));
                         key.SetValue("QuietUninstallString", Cmd(name));
                         key.SetValue("NoModify", 1, RegistryValueKind.DWord);
                         key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+                        key.SetValue(
+                            "InstallDate",
+                            Directory.GetCreationTime(current).ToString("yyyyMMdd")
+                        );
+                        key.SetValue("Comments", "Managed by KJLLin Toolbox (Scoop)");
                         if (home is not null)
                             key.SetValue("URLInfoAbout", home);
                     }
@@ -95,7 +117,10 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                     Logger.Warn(e);
                 }
             }
+        }
 
+        private static void Prune(HashSet<string> keep)
+        {
             using RegistryKey? root = Registry.CurrentUser.OpenSubKey(Root);
             if (root is null)
                 return;
@@ -122,7 +147,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             return "\"" + exe + "\" --scoop-uninstall " + app;
         }
 
-        private static string? AppsRoot()
+        private static List<string> AppsRoots()
         {
             List<string> roots = [];
             string? env = Environment.GetEnvironmentVariable("SCOOP");
@@ -131,14 +156,15 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
 
             roots.Add(Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "scoop"));
 
+            List<string> found = [];
             foreach (string root in roots)
             {
                 string apps = Path.Join(root, "apps");
-                if (Directory.Exists(apps))
-                    return apps;
+                if (Directory.Exists(apps) && !found.Contains(apps, StringComparer.OrdinalIgnoreCase))
+                    found.Add(apps);
             }
 
-            return null;
+            return found;
         }
 
         private static JsonDocument? Json(string path)

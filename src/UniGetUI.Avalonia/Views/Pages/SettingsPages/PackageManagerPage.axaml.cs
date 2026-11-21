@@ -540,6 +540,25 @@ public sealed partial class PackageManagerPage : UserControl, ISettingsPage
                 scoopCleanup.Click += (_, _) => ViewModel.ScoopCleanupCommand.Execute(null);
                 ExtraControls.Children.Add(scoopCleanup);
 
+                var scoopRefresh = new ButtonCard
+                {
+                    Text = CoreTools.AutoTranslated("Refresh Scoop bucket index"),
+                    ButtonText = CoreTools.AutoTranslated("Refresh"),
+                    CornerRadius = new CornerRadius(0),
+                    BorderThickness = new Thickness(1, 0, 1, 0),
+                    Description = CoreTools.AutoTranslated(
+                        "Runs scoop update so curated apps report the newest versions"),
+                };
+                scoopRefresh.Click += async (_, _) =>
+                {
+                    scoopRefresh.ButtonText = CoreTools.AutoTranslated("Refreshing...");
+                    bool ok = await ScoopBucketRefresher.RunAsync(true);
+                    scoopRefresh.ButtonText = ok
+                        ? CoreTools.AutoTranslated("Done")
+                        : CoreTools.AutoTranslated("Failed");
+                };
+                ExtraControls.Children.Add(scoopRefresh);
+
                 // Clear download cache on launch
                 ExtraControls.Children.Add(new CheckboxCard
                 {
