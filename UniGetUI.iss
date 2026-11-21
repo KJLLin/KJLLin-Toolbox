@@ -270,6 +270,8 @@ end;
 
 // Clear the marker once the copy is done, before the post-install launch.
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+    DeepLinkMarkerWritten: Boolean;
 begin
     if CurStep = ssPostInstall then
     begin
@@ -277,7 +279,12 @@ begin
         // Portable installs must never inspect or modify PATH/ownership, even
         // when installing over a directory previously used by a regular install.
         if WizardIsTaskSelected('regularinstall') then
+        begin
             UpdateUnigetPath(WizardIsTaskSelected('regularinstall\addtopath'));
+            // Best effort: Windows 11 rejects this value for non-elevated processes.
+            // Ignoring the result keeps the install from aborting over a deep link.
+            DeepLinkMarkerWritten := RegWriteStringValue(HKCU, 'Software\Classes\unigetui', 'URL Protocol', '');
+        end;
     end;
 end;
 
@@ -442,7 +449,9 @@ Root: HKLM64; Subkey: "{#AutostartComponentKey}"; ValueType: string; ValueName: 
 
 // Register the unigetui:// deep link
 Root: HKA; Subkey: "Software\Classes\unigetui"; ValueType: "string"; ValueData: "URL:UniGetUI Protocol"; Flags: uninsdeletekey; Tasks: regularinstall;
-Root: HKA; Subkey: "Software\Classes\unigetui"; ValueType: "string"; ValueName: "URL Protocol"; ValueData: ""; Tasks: regularinstall;
+// NOTE: the "URL Protocol" marker moved to CurStepChanged (best effort). Windows 11
+// denies this value to non-elevated processes, and a failing [Registry] entry would
+// abort (and roll back) the whole install.
 Root: HKA; Subkey: "Software\Classes\unigetui\DefaultIcon"; ValueType: "string"; ValueData: "{app}\{#MyAppExeName},0"; Tasks: regularinstall;
 Root: HKA; Subkey: "Software\Classes\unigetui\shell\open\command"; ValueType: "string"; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: regularinstall;
 
