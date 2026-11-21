@@ -1,32 +1,39 @@
 #!/usr/bin/env python3
-"""只保留 Scoop：去掉 npm/pip/dotnet/powershell/cargo/bun/vcpkg（以及 winget/choco）的管理器接入。"""
+"""双引擎：Scoop（主）+ WinGet（可选），其余管理器保持删除状态。"""
 import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PE = ROOT / "src/UniGetUI.PackageEngine.PackageEngine/PEInterface.cs"
 
-M1 = "            List<IPackageManager?> candidates = [Npm, Bun, Pip, Cargo, Vcpkg, DotNet, PowerShell7];"
-M2 = "            candidates.InsertRange(0, [WinGet, WinInstaller, Scoop, Chocolatey]);"
-M3 = "            candidates.Add(PowerShell);\n"
-
-N1 = "            List<IPackageManager?> candidates = [];"
-N2 = "            candidates.InsertRange(0, [Scoop]);"
+ORIGINAL = "            candidates.InsertRange(0, [WinGet, WinInstaller, Scoop, Chocolatey]);"
+SINGLE = "            candidates.InsertRange(0, [Scoop]);"
+DUAL = "            candidates.InsertRange(0, [Scoop, WinGet]);"
+LEGACY_LIST = "            List<IPackageManager?> candidates = [Npm, Bun, Pip, Cargo, Vcpkg, DotNet, PowerShell7];"
+LEGACY_ADD = "            candidates.Add(PowerShell);\n"
 
 report = []
 
 
 def patch(text):
-    if "candidates.InsertRange(0, [Scoop]);" in text:
-        report.append("  · PEInterface.cs 已裁剪过，跳过")
+    if DUAL in text:
+        report.append("  · PEInterface.cs 已是双引擎，跳过")
         return text
-    if M1 not in text or M2 not in text:
-        report.append("  ! PEInterface.cs 锚点缺失，未裁剪")
+    if SINGLE in text:
+        text = text.replace(SINGLE, DUAL, 1)
+        report.append("  ✓ PEInterface.cs 单引擎 -> Scoop + WinGet")
+    elif ORIGINAL in text:
+        text = text.replace(ORIGINAL, DUAL, 1)
+        report.append("  ✓ PEInterface.cs 上游形态 -> Scoop + WinGet")
+    else:
+        report.append("  ! PEInterface.cs 锚点缺失，未改动")
         return text
-    text = text.replace(M1, N1, 1)
-    text = text.replace(M2, N2, 1)
-    text = text.replace(M3, "", 1)
-    report.append("  ✓ PEInterface.cs 只保留 Scoop")
+    if LEGACY_LIST in text:
+        text = text.replace(LEGACY_LIST, "            List<IPackageManager?> candidates = [];", 1)
+        report.append("  ✓ 移除 npm/pip/cargo/dotnet/powershell7 候选")
+    if LEGACY_ADD in text:
+        text = text.replace(LEGACY_ADD, "", 1)
+        report.append("  ✓ 移除 PowerShell 候选")
     return text
 
 
@@ -37,11 +44,8 @@ def main():
         return 1
     original = PE.read_text("utf-8")
     updated = patch(original)
-    if updated != original:
-        if write:
-            PE.write_text(updated, "utf-8")
-        else:
-            report.append("  ~ PEInterface.cs（未写入）")
+    if updated != original and write:
+        PE.write_text(updated, "utf-8")
     print("\n".join(report) if report else "nothing to do")
     return 0
 

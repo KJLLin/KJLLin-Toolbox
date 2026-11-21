@@ -97,7 +97,7 @@ namespace UniGetUI.PackageEngine
         {
             List<IPackageManager?> candidates = [];
 #if WINDOWS
-            candidates.InsertRange(0, [Scoop]);
+            candidates.InsertRange(0, [Scoop, WinGet]);
 #else
             candidates.Insert(0, Homebrew);
             if (OperatingSystem.IsMacOS())
