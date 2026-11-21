@@ -275,6 +275,29 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             return false;
         }
 
+        /// <summary>第三方 bucket 里预批准的应用：不开「更多源」时，它们也出现在首页与更新里。</summary>
+        internal static readonly string[] CuratedApps =
+        [
+            "7zip",
+            "vscode",
+            "everything",
+            "obsidian",
+            "powertoys",
+            "notepadplusplus",
+            "potplayer",
+            "snipaste",
+            "git",
+            "ripgrep",
+            "quicklook",
+            "bandizip",
+            "googlechrome",
+            "firefox",
+            "steam",
+        ];
+
+        internal bool IsCurated(string? name) =>
+            name is not null && CuratedApps.Contains(name, StringComparer.OrdinalIgnoreCase);
+
         private (string Bucket, string Version)? FindBucketManifestOnDisk(string id)
         {
             if (!CoreTools.IsValidPackageIdentifier(id) || id.Contains('/'))
@@ -351,13 +374,13 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                     continue;
                 }
 
-                if (skipSource)
+                string[] elements = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (elements.Length < 2)
                 {
                     continue;
                 }
 
-                string[] elements = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (elements.Length < 2)
+                if (!ShowThirdPartySources && !IsOwnSource(source.Name) && !IsCurated(elements[0]))
                 {
                     continue;
                 }
@@ -386,7 +409,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                 );
             }
 
-            if (ShowThirdPartySources)
+            if (packages.Count > 0)
             {
                 // Own catalogs win: when the same app is served by several buckets,
                 // keep the entry that comes from one of our sources.
@@ -462,7 +485,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                     )
                 )
                 {
-                    if (!ShowThirdPartySources && !IsOwnSource(installedPackage.Source.Name))
+                    if (!ShowThirdPartySources && !IsOwnSource(installedPackage.Source.Name) && !IsCurated(id))
                         continue;
                     OverridenInstallationOptions options = new(installedPackage.OverridenOptions.Scope);
                     packages.Add(

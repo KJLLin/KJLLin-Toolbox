@@ -15,7 +15,7 @@ namespace UniGetUI.Avalonia.Infrastructure;
 internal static class UninstallRequestHandler
 {
     private const string Flag = "--scoop-uninstall";
-    private const string KeyPrefix = @"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\KJLLin.Toolbox.";
+    private const string KeyPrefix = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\KJLLin.Toolbox.";
 
     internal static async Task HandleAsync(MainWindow mainWindow, string[]? args)
     {

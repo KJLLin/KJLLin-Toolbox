@@ -262,6 +262,7 @@ public partial class App : Application
 
     private static async Task StartupAsync(MainWindow mainWindow, string[] args)
     {
+        _ = UninstallRequestHandler.HandleAsync(mainWindow, args);
         // Show crash report from the previous session and wait for the user
         // to dismiss it before continuing with normal startup.
         if (File.Exists(CrashHandler.PendingCrashFile))
@@ -338,6 +339,8 @@ public partial class App : Application
                 args, $"the launch requested {AvaloniaCliHandler.DAEMON}");
             return;
         }
+
+        _ = UninstallRequestHandler.HandleAsync(mainWindow, args);
 
         mainWindow.ShowFromTray();
 

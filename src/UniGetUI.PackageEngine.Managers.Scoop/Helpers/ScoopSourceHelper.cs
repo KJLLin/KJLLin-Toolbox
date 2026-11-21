@@ -105,11 +105,6 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                     continue;
                 }
 
-                if (scoop is not null && !scoop.ShowThirdPartySources && !scoop.IsOwnSource(name))
-                {
-                    continue;
-                }
-
                 try
                 {
                     Uri url = BuildSourceUrl(name, source);
@@ -132,7 +127,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                 }
             }
 
-            if (scoop is not null && scoop.ShowThirdPartySources)
+            if (scoop is not null)
             {
                 return sources.OrderBy(item => scoop.IsOwnSource(item.Name) ? 0 : 1).ToList();
             }

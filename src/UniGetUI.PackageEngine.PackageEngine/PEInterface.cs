@@ -109,10 +109,9 @@ namespace UniGetUI.PackageEngine
 
         private static IPackageManager[] CreateManagers()
         {
-            List<IPackageManager?> candidates = [Npm, Bun, Pip, Cargo, Vcpkg, DotNet, PowerShell7];
+            List<IPackageManager?> candidates = [];
 #if WINDOWS
-            candidates.InsertRange(0, [WinGet, WinInstaller, Scoop, Chocolatey]);
-            candidates.Add(PowerShell);
+            candidates.InsertRange(0, [Scoop]);
 #else
             candidates.Insert(0, Homebrew);
             if (OperatingSystem.IsMacOS())
