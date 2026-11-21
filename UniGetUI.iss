@@ -470,6 +470,7 @@ Type: files; Name: "{app}\*.xbf"
 
 [Files]
 Source: "InstallerExtras\EnsureScoop.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall ignoreversion
+Source: "InstallerExtras\EnsureWinGet.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall ignoreversion
 Source: "InstallerExtras\scoop-install.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall ignoreversion
 ; Deploy installer for autorepair jobs (unless disabled)
 Source: "{srcexe}"; DestDir: "{app}"; DestName: "UniGetUI.Installer.exe"; Flags: external ignoreversion; Tasks: regularinstall; Check: not CmdLineParamExists('/NoDeployInstaller');
@@ -489,8 +490,9 @@ Name: "{autostartmenu}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUser
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: regularinstall\desktopicon; Check: not CmdLineParamExists('/NoDesktopShortcut')
 
 [Run]
+; WinGet: only downloads App Installer packages when winget is actually missing (Gitee mirror first).
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File -NonInteractive ""{tmp}\EnsureWinGet.ps1"""; StatusMsg: "Checking Windows Package Manager (winget)..."; WorkingDir: {app}; Flags: runhidden runasoriginaluser; Check: not CmdLineParamExists('/NoWinGetBootstrap')
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File -NonInteractive ""{tmp}\EnsureScoop.ps1"" -BucketUrls 'toolbox=https://gitee.com/kjllin/kjllin-toolbox-bucket|https://github.com/KJLLin/KJLLin-Toolbox-Bucket;toolbox-beta=https://gitee.com/kjllin/kjllin-toolbox-bucket-beta|https://github.com/KJLLin/KJLLin-Toolbox-Bucket-Beta'"; StatusMsg: "Preparing Scoop and the KJLLin Toolbox sources..."; WorkingDir: {app}; Flags: runhidden runasoriginaluser; Check: not CmdLineParamExists('/NoScoop')
-; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File -NonInteractive ""{tmp}\EnsureWinGet.ps1"""; StatusMsg: "Ensuring WinGet is properly installed... (this may take a while)"; WorkingDir: {app}; Check: not CmdLineParamExists('/NoWinGet'); Flags: runhidden
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: runasoriginaluser nowait postinstall; Check: ShouldLaunchInForegroundAfterInstall;
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--daemon"; Flags: runasoriginaluser nowait postinstall; Check: ShouldLaunchInBackgroundAfterInstall;
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--migrate-wingetui-to-unigetui"; StatusMsg: "{cm:RemovingOldIcons}";
