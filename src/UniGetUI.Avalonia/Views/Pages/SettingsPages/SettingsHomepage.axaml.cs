@@ -28,8 +28,8 @@ public sealed partial class SettingsHomepage : UserControl, ISettingsPage
     /// <summary>未打开「开发人员选项」时，隐藏普通用户用不到的高级设置入口。</summary>
     private void ApplyDeveloperMode()
     {
-        bool developerMode = global::UniGetUI.Core.Settings.Settings.Get(
-            global::UniGetUI.Core.Settings.Settings.K.DeveloperMode);
+        bool developerMode = global::UniGetUI.Core.SettingsEngine.Settings.Get(
+            global::UniGetUI.Core.SettingsEngine.Settings.K.DeveloperMode);
 
         foreach (
             Control button in new Control[]

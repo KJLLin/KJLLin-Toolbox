@@ -47,8 +47,8 @@ HOME_CS_NEW = """        ExperimentalButton.UnderText = CoreTools.Translate("Bet
     /// <summary>未打开「开发人员选项」时，隐藏普通用户用不到的高级设置入口。</summary>
     private void ApplyDeveloperMode()
     {
-        bool developerMode = global::UniGetUI.Core.Settings.Settings.Get(
-            global::UniGetUI.Core.Settings.Settings.K.DeveloperMode);
+        bool developerMode = global::UniGetUI.Core.SettingsEngine.Settings.Get(
+            global::UniGetUI.Core.SettingsEngine.Settings.K.DeveloperMode);
 
         foreach (
             Control button in new Control[]
@@ -112,6 +112,11 @@ def apply_home(text):
 
 
 def apply_home_cs(text):
+    bad = "global::UniGetUI.Core.Settings.Settings"
+    if bad in text:
+        text = text.replace(bad, "global::UniGetUI.Core.SettingsEngine.Settings")
+        report.append("  ✓ SettingsHomepage.axaml.cs 修正 Settings 命名空间")
+        return text
     if "ApplyDeveloperMode" in text:
         report.append("  · SettingsHomepage.axaml.cs 已有隐藏逻辑")
         return text
