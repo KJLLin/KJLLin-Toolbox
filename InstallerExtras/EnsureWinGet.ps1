@@ -14,7 +14,8 @@
 #>
 param(
     [switch]$CheckOnly,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
@@ -195,7 +196,7 @@ New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 
 try {
     foreach ($p in $packages) {
-        if (Test-PackageInstalled $p.PkgName) {
+        if (-not $DryRun -and (Test-PackageInstalled $p.PkgName)) {
             Write-Log "$($p.PkgName) already installed, skipping"
             continue
         }
@@ -204,7 +205,16 @@ try {
             Write-Log "could not obtain $($p.File)"
             continue
         }
+        if ($DryRun) {
+            Write-Log "dry run: $($p.File) downloaded and verified, install skipped"
+            continue
+        }
         Install-Appx $file | Out-Null
+    }
+
+    if ($DryRun) {
+        Write-Log 'dry run completed'
+        exit 0
     }
 
     $version = Test-WinGetVersion
