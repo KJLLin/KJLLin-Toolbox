@@ -16,8 +16,6 @@ using UniGetUI.Core.Tools;
 using UniGetUI.Interface.Enums;
 using UniGetUI.PackageEngine.Interfaces;
 using UniGetUI.PackageEngine.ManagerClasses.Manager;
-using UniGetUI.PackageEngine.Managers.PipManager;
-using UniGetUI.PackageEngine.Managers.VcpkgManager;
 using CoreSettings = UniGetUI.Core.SettingsEngine.Settings;
 using CornerRadius = global::Avalonia.CornerRadius;
 using Thickness = global::Avalonia.Thickness;
@@ -561,172 +559,12 @@ public sealed partial class PackageManagerPage : UserControl, ISettingsPage
                 });
                 break;
 
-            case "Bun":
-                disableNotifsCard.CornerRadius = new CornerRadius(8, 8, 0, 0);
-                disableNotifsCard.BorderThickness = new Thickness(1, 1, 1, 0);
-                ExtraControls.Children.Add(disableNotifsCard);
-
-                ExtraControls.Children.Add(new CheckboxCard
-                {
-                    CornerRadius = new CornerRadius(0, 0, 8, 8),
-                    BorderThickness = new Thickness(1, 0, 1, 1),
-                    SettingName = CoreSettings.K.BunPreferLatestVersions,
-                    Text = CoreTools.Translate("Prefer latest versions (may include breaking changes) instead of recommended safe updates"),
-                });
-                break;
-
-            case "Pip":
-                disableNotifsCard.CornerRadius = new CornerRadius(8, 8, 0, 0);
-                disableNotifsCard.BorderThickness = new Thickness(1, 1, 1, 0);
-                ExtraControls.Children.Add(disableNotifsCard);
-                ExtraControls.Children.Add(BuildPythonEnvironmentsCard());
-                break;
-
-            case "vcpkg":
-                disableNotifsCard.CornerRadius = new CornerRadius(8, 8, 0, 0);
-                disableNotifsCard.BorderThickness = new Thickness(1, 1, 1, 0);
-                ExtraControls.Children.Add(disableNotifsCard);
-
-                CoreSettings.SetValue(CoreSettings.K.DefaultVcpkgTriplet, Vcpkg.GetDefaultTriplet());
-                var vcpkgTriplet = new ComboboxCard
-                {
-                    Text = CoreTools.Translate("Default vcpkg triplet"),
-                    SettingName = CoreSettings.K.DefaultVcpkgTriplet,
-                    CornerRadius = new CornerRadius(0),
-                };
-                foreach (string triplet in Vcpkg.GetSystemTriplets())
-                    vcpkgTriplet.AddItem(triplet, triplet, false);
-                vcpkgTriplet.ShowAddedItems();
-                ExtraControls.Children.Add(vcpkgTriplet);
-                ExtraControls.Children.Add(BuildVcpkgRootCard());
-                break;
-
             default:
                 disableNotifsCard.CornerRadius = new CornerRadius(8);
                 disableNotifsCard.BorderThickness = new Thickness(1);
                 ExtraControls.Children.Add(disableNotifsCard);
                 break;
         }
-    }
-
-    private SettingsCard BuildPythonEnvironmentsCard()
-    {
-        var rows = new StackPanel { Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
-        var description = new StackPanel { Spacing = 4 };
-        description.Children.Add(new TextBlock
-        {
-            Text = CoreTools.Translate("UniGetUI only manages the Python environments checked below. Virtual environments, conda environments and embedded Pythons usually belong to other apps, so they are not managed unless you check them."),
-            FontSize = 12,
-            Opacity = 0.7,
-            TextWrapping = TextWrapping.Wrap,
-        });
-        description.Children.Add(rows);
-
-        if (!Pip.CanOptInEnvironments())
-        {
-            var gate = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-            var (warning, change) = BuildCustomPathsWarning();
-            gate.Children.Add(warning);
-            Grid.SetColumn(change, 1);
-            gate.Children.Add(change);
-            description.Children.Add(gate);
-        }
-
-        void Fill()
-        {
-            rows.Children.Clear();
-            List<string> interpreters = [];
-            string savedPath = CoreSettings.GetDictionaryItem<string, string>(CoreSettings.K.ManagerPaths, ViewModel.Manager.Name) ?? "";
-            foreach (string path in ViewModel.CandidateExecutables.Append(savedPath).Append(ViewModel.Manager.Status.ExecutablePath))
-            {
-                if (path.Length > 0 && File.Exists(path) && !interpreters.Any(known => Pip.IsSameEnvironment(known, path)))
-                    interpreters.Add(path);
-            }
-
-            if (interpreters.Count == 0)
-            {
-                rows.Children.Add(new TextBlock
-                {
-                    Text = CoreTools.Translate("No Python interpreters were found"),
-                    FontSize = 12,
-                });
-                return;
-            }
-
-            foreach (string path in interpreters)
-                rows.Children.Add(BuildPythonEnvironmentRow(path));
-        }
-
-        Fill();
-        rows.IsEnabled = !ViewModel.IsLoading;
-        ViewModel.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName != nameof(PackageManagerViewModel.IsLoading))
-                return;
-
-            rows.IsEnabled = !ViewModel.IsLoading;
-            if (!ViewModel.IsLoading)
-                Fill();
-        };
-
-        return new SettingsCard
-        {
-            Header = CoreTools.Translate("Python environments"),
-            Description = description,
-            CornerRadius = new CornerRadius(0, 0, 8, 8),
-            BorderThickness = new Thickness(1, 0, 1, 1),
-        };
-    }
-
-    private Grid BuildPythonEnvironmentRow(string path)
-    {
-        PythonEnvironmentKind kind = Pip.ClassifyEnvironment(path);
-        string kindText = kind switch
-        {
-            PythonEnvironmentKind.VirtualEnvironment => CoreTools.Translate("Virtual environment"),
-            PythonEnvironmentKind.CondaEnvironment => CoreTools.Translate("Conda environment"),
-            PythonEnvironmentKind.Embedded => CoreTools.Translate("Embedded Python"),
-            PythonEnvironmentKind.StoreAlias => CoreTools.Translate("Microsoft Store alias"),
-            PythonEnvironmentKind.Unknown => CoreTools.Translate("Unrecognized Python"),
-            _ => CoreTools.Translate("System Python"),
-        };
-        if (Pip.IsSameEnvironment(ViewModel.Manager.Status.ExecutablePath, path))
-            kindText += " · " + CoreTools.Translate("In use");
-
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var labels = new StackPanel { Spacing = 2 };
-        labels.Children.Add(new TextBlock
-        {
-            Text = path,
-            FontFamily = new FontFamily("Consolas,Cascadia Mono,Menlo,monospace"),
-            TextWrapping = TextWrapping.Wrap,
-        });
-        labels.Children.Add(new TextBlock
-        {
-            Text = kindText,
-            FontSize = 12,
-            Opacity = 0.7,
-        });
-        row.Children.Add(labels);
-
-        var manage = new CheckBox
-        {
-            Content = CoreTools.Translate("Manage"),
-            IsChecked = Pip.IsEnvironmentManaged(path, kind)
-                || (ViewModel.Manager is Pip pip && pip.IsChosenExecutable(path)),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0),
-        };
-        manage.IsEnabled = Pip.CanOptInEnvironments() || Pip.IsManagedByDefault(kind) || manage.IsChecked == true;
-        AutomationProperties.SetName(manage, CoreTools.Translate("Manage the Python environment at {0}", path));
-        manage.IsCheckedChanged += (_, _) =>
-        {
-            Pip.SetEnvironmentManaged(path, manage.IsChecked == true);
-            _ = ViewModel.ReloadManagerCommand.ExecuteAsync(null);
-        };
-        Grid.SetColumn(manage, 1);
-        row.Children.Add(manage);
-        return row;
     }
 
     private (TextBlock Warning, Button Change) BuildCustomPathsWarning()
@@ -749,63 +587,6 @@ public sealed partial class PackageManagerPage : UserControl, ISettingsPage
         };
         change.Click += (_, _) => ViewModel.NavigateToAdministratorCommand.Execute(null);
         return (warning, change);
-    }
-
-    private ButtonCard BuildVcpkgRootCard()
-    {
-        var vcpkgRootCard = new ButtonCard
-        {
-            Text = CoreTools.AutoTranslated("Change vcpkg root location"),
-            ButtonText = CoreTools.AutoTranslated("Select"),
-            CornerRadius = new CornerRadius(0, 0, 8, 8),
-            BorderThickness = new Thickness(1, 0, 1, 1),
-        };
-
-        var rootLabel = new TextBlock
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            Text = ViewModel.VcpkgRootPath,
-        };
-        var resetBtn = new Button
-        {
-            Content = CoreTools.Translate("Reset"),
-            IsEnabled = ViewModel.IsCustomVcpkgRootSet,
-            Margin = new Thickness(4, 0),
-            Classes = { "secondary-action" },
-        };
-        AutomationProperties.SetName(resetBtn, CoreTools.Translate("Reset vcpkg root location"));
-        var openBtn = new Button
-        {
-            Content = CoreTools.Translate("Open"),
-            IsEnabled = ViewModel.IsCustomVcpkgRootSet,
-            Margin = new Thickness(4, 0),
-            Classes = { "secondary-action" },
-        };
-        AutomationProperties.SetName(openBtn, CoreTools.Translate("Open vcpkg root location"));
-
-        ViewModel.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(PackageManagerViewModel.VcpkgRootPath))
-                rootLabel.Text = ViewModel.VcpkgRootPath;
-            if (e.PropertyName == nameof(PackageManagerViewModel.IsCustomVcpkgRootSet))
-            {
-                resetBtn.IsEnabled = ViewModel.IsCustomVcpkgRootSet;
-                openBtn.IsEnabled = ViewModel.IsCustomVcpkgRootSet;
-            }
-        };
-
-        resetBtn.Click += (_, _) => ViewModel.ResetVcpkgRootCommand.Execute(null);
-        openBtn.Click += (_, _) => ViewModel.OpenVcpkgRootCommand.Execute(null);
-
-        var descPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        descPanel.Children.Add(rootLabel);
-        descPanel.Children.Add(resetBtn);
-        descPanel.Children.Add(openBtn);
-        vcpkgRootCard.Description = descPanel;
-
-        vcpkgRootCard.Command = ViewModel.PickVcpkgRootCommand;
-        vcpkgRootCard.CommandParameter = vcpkgRootCard;
-        return vcpkgRootCard;
     }
 
     // ── View-only: brush lookup (needs ActualThemeVariant) ───────────────────

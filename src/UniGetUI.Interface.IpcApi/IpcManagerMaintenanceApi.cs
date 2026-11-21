@@ -2,7 +2,6 @@ using UniGetUI.Core.SettingsEngine;
 using UniGetUI.Core.SettingsEngine.SecureSettings;
 using UniGetUI.PackageEngine.Interfaces;
 using UniGetUI.PackageEngine.ManagerClasses.Classes;
-using UniGetUI.PackageEngine.Managers.VcpkgManager;
 
 namespace UniGetUI.Interface;
 
@@ -146,10 +145,6 @@ public static class IpcManagerMaintenanceApi
             manager.Name
         );
 
-        IReadOnlyList<string> triplets = manager.Name.Equals("vcpkg", StringComparison.OrdinalIgnoreCase)
-            ? Vcpkg.GetSystemTriplets().ToArray()
-            : [];
-
         string? customVcpkgRoot = manager.Name.Equals("vcpkg", StringComparison.OrdinalIgnoreCase)
             && Settings.Get(Settings.K.CustomVcpkgRoot)
             ? Settings.GetValue(Settings.K.CustomVcpkgRoot)
@@ -189,7 +184,7 @@ public static class IpcManagerMaintenanceApi
             DefaultVcpkgTriplet = manager.Name.Equals("vcpkg", StringComparison.OrdinalIgnoreCase)
                 ? Settings.GetValue(Settings.K.DefaultVcpkgTriplet)
                 : null,
-            AvailableVcpkgTriplets = triplets,
+            AvailableVcpkgTriplets = [],
             CustomVcpkgRoot = string.IsNullOrWhiteSpace(customVcpkgRoot) ? null : customVcpkgRoot,
         };
     }

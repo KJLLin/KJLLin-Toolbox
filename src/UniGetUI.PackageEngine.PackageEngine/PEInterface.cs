@@ -1,18 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
 using UniGetUI.Core.Logging;
 using UniGetUI.PackageEngine.Interfaces;
-using UniGetUI.PackageEngine.Managers.BunManager;
-using UniGetUI.PackageEngine.Managers.CargoManager;
-using UniGetUI.PackageEngine.Managers.DotNetManager;
-using UniGetUI.PackageEngine.Managers.NpmManager;
-using UniGetUI.PackageEngine.Managers.PipManager;
 using UniGetUI.PackageEngine.Managers.PowerShell7Manager;
-using UniGetUI.PackageEngine.Managers.VcpkgManager;
 using UniGetUI.PackageEngine.PackageClasses;
 using UniGetUI.PackageEngine.PackageLoader;
 #if WINDOWS
 using UniGetUI.PackageEngine.Managers.ChocolateyManager;
-using UniGetUI.PackageEngine.Managers.PowerShellManager;
 using UniGetUI.PackageEngine.Managers.ScoopManager;
 using UniGetUI.PackageEngine.Managers.WingetManager;
 using UniGetUI.PackageEngine.Managers.WinInstallerManager;
@@ -41,16 +34,9 @@ namespace UniGetUI.PackageEngine
         public static readonly Chocolatey? Chocolatey = Create(() => new Chocolatey());
         public static readonly WinInstaller? WinInstaller = Create(() => new WinInstaller());
 #endif
-        public static readonly Npm? Npm = Create(() => new Npm());
-        public static readonly Bun? Bun = Create(() => new Bun());
-        public static readonly Pip? Pip = Create(() => new Pip());
-        public static readonly DotNet? DotNet = Create(() => new DotNet());
         public static readonly PowerShell7? PowerShell7 = Create(() => new PowerShell7());
 #if WINDOWS
-        public static readonly PowerShell? PowerShell = Create(() => new PowerShell());
 #endif
-        public static readonly Cargo? Cargo = Create(() => new Cargo());
-        public static readonly Vcpkg? Vcpkg = Create(() => new Vcpkg());
 #if !WINDOWS
         public static readonly Apt? Apt = Create(() => new Apt());
         public static readonly Dnf? Dnf = Create(() => new Dnf());

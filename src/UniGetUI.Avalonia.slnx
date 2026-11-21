@@ -189,38 +189,8 @@
       <Platform Solution="*|x64" Project="x64" />
     </Project>
   </Folder>
-  <Folder Name="/UniGetUI.PackageEngine.Managers.Bun/">
-    <Project Path="UniGetUI.PackageEngine.Managers.Bun/UniGetUI.PackageEngine.Managers.Bun.csproj">
-      <Platform Solution="*|arm64" Project="arm64" />
-      <Platform Solution="*|x64" Project="x64" />
-    </Project>
-  </Folder>
-  <Folder Name="/UniGetUI.PackageEngine.Managers.Cargo/">
-    <Project Path="UniGetUI.PackageEngine.Managers.Cargo/UniGetUI.PackageEngine.Managers.Cargo.csproj">
-      <Platform Solution="*|arm64" Project="arm64" />
-      <Platform Solution="*|x64" Project="x64" />
-    </Project>
-  </Folder>
-  <Folder Name="/UniGetUI.PackageEngine.Managers.Npm/">
-    <Project Path="UniGetUI.PackageEngine.Managers.Npm/UniGetUI.PackageEngine.Managers.Npm.csproj">
-      <Platform Solution="*|arm64" Project="arm64" />
-      <Platform Solution="*|x64" Project="x64" />
-    </Project>
-  </Folder>
-  <Folder Name="/UniGetUI.PackageEngine.Managers.Pip/">
-    <Project Path="UniGetUI.PackageEngine.Managers.Pip/UniGetUI.PackageEngine.Managers.Pip.csproj">
-      <Platform Solution="*|arm64" Project="arm64" />
-      <Platform Solution="*|x64" Project="x64" />
-    </Project>
-  </Folder>
   <Folder Name="/UniGetUI.PackageEngine.Managers.PowerShell7/">
     <Project Path="UniGetUI.PackageEngine.Managers.PowerShell7/UniGetUI.PackageEngine.Managers.PowerShell7.csproj">
-      <Platform Solution="*|arm64" Project="arm64" />
-      <Platform Solution="*|x64" Project="x64" />
-    </Project>
-  </Folder>
-  <Folder Name="/UniGetUI.PackageEngine.Managers.Dotnet/">
-    <Project Path="UniGetUI.PackageEngine.Managers.Dotnet/UniGetUI.PackageEngine.Managers.Dotnet.csproj">
       <Platform Solution="*|arm64" Project="arm64" />
       <Platform Solution="*|x64" Project="x64" />
     </Project>
@@ -245,12 +215,6 @@
   </Folder>
   <Folder Name="/UniGetUI.PackageEngine.Managers.Flatpak/">
     <Project Path="UniGetUI.PackageEngine.Managers.Flatpak/UniGetUI.PackageEngine.Managers.Flatpak.csproj">
-      <Platform Solution="*|arm64" Project="arm64" />
-      <Platform Solution="*|x64" Project="x64" />
-    </Project>
-  </Folder>
-  <Folder Name="/UniGetUI.PackageEngine.Managers.Vcpkg/">
-    <Project Path="UniGetUI.PackageEngine.Managers.Vcpkg/UniGetUI.PackageEngine.Managers.Vcpkg.csproj">
       <Platform Solution="*|arm64" Project="arm64" />
       <Platform Solution="*|x64" Project="x64" />
     </Project>

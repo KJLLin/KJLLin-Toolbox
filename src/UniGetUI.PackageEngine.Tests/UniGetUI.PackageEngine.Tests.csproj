@@ -24,11 +24,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Bun\UniGetUI.PackageEngine.Managers.Bun.csproj" />
-        <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Cargo\UniGetUI.PackageEngine.Managers.Cargo.csproj" />
-        <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Dotnet\UniGetUI.PackageEngine.Managers.Dotnet.csproj" />
-        <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Pip\UniGetUI.PackageEngine.Managers.Pip.csproj" />
-        <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Npm\UniGetUI.PackageEngine.Managers.Npm.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Apt\UniGetUI.PackageEngine.Managers.Apt.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Dnf\UniGetUI.PackageEngine.Managers.Dnf.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Pacman\UniGetUI.PackageEngine.Managers.Pacman.csproj" />
@@ -38,7 +33,6 @@
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Homebrew\UniGetUI.PackageEngine.Managers.Homebrew.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.MacPkg\UniGetUI.PackageEngine.Managers.MacPkg.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Generic.InstallerFeeds\UniGetUI.PackageEngine.Managers.Generic.InstallerFeeds.csproj" />
-        <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Vcpkg\UniGetUI.PackageEngine.Managers.Vcpkg.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Interfaces\UniGetUI.PackageEngine.Interfaces.csproj" />
         <ProjectReference Include="..\UniGetUI.Interface.Enums\UniGetUI.Interface.Enums.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Enums\UniGetUI.PackageEngine.Structs.csproj" />
@@ -51,7 +45,6 @@
 
     <ItemGroup Condition="'$(TargetFramework)' == '$(WindowsTargetFramework)'">
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Chocolatey\UniGetUI.PackageEngine.Managers.Chocolatey.csproj" />
-        <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.PowerShell\UniGetUI.PackageEngine.Managers.PowerShell.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.PowerShell7\UniGetUI.PackageEngine.Managers.PowerShell7.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Scoop\UniGetUI.PackageEngine.Managers.Scoop.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.WinGet\UniGetUI.PackageEngine.Managers.WinGet.csproj" />
