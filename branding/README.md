@@ -35,3 +35,5 @@
 ## 构建
 
 推送到 `polaris` 且改动命中 `branding/**`、`src/**`、`UniGetUI.iss`、`global.json` 时会自动构建；机器人带 `[skip ci]` 的品牌提交不会触发，需再推一次改动才会真正编译。
+
+> 精选名单、管理器集合、卸载钩子三处补丁均由 `polaris-brand` 工作流在 CI 里落地，本地无需手工改代码。
