@@ -9,6 +9,8 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
     /// 精选第三方应用名单，来源是 KJLLin-Toolbox-Bucket 仓库根目录的 curated.json。
     /// 启动时读本地缓存，后台拉远端刷新（每 6 小时一次），拉不到就用代码里内置的名单。
     /// 若存在本地覆盖文件 curated.override.json，则以它为准并停止拉取远端。
+    /// 名单里的 "winget" 映射表示该应用在 winget 可用时改由 winget 安装（走原生卸载器），
+    /// 这时 Scoop 侧不再展示它，避免同一个应用在商店里出现两条。
     /// </summary>
     internal static class CuratedCatalog
     {
@@ -24,7 +26,27 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
         private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan RefreshInterval = TimeSpan.FromHours(6);
 
+        /// <summary>远端拉不到时用的内置 winget 对照表（只列 winget 社区源确认存在的包）。</summary>
+        private static readonly Dictionary<string, string> BuiltinWinGetIds = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["7zip"] = "7zip.7zip",
+            ["vscode"] = "Microsoft.VisualStudioCode",
+            ["everything"] = "voidtools.Everything",
+            ["obsidian"] = "Obsidian.Obsidian",
+            ["powertoys"] = "Microsoft.PowerToys",
+            ["notepadplusplus"] = "Notepad++.Notepad++",
+            ["potplayer"] = "Daum.PotPlayer",
+            ["git"] = "Git.Git",
+            ["ripgrep"] = "BurntSushi.ripgrep.MSVC",
+            ["quicklook"] = "QL-Win.QuickLook",
+            ["bandizip"] = "Bandisoft.Bandizip",
+            ["googlechrome"] = "Google.Chrome",
+            ["firefox"] = "Mozilla.Firefox",
+            ["steam"] = "Valve.Steam",
+        };
+
         private static volatile string[] _names = [];
+        private static volatile Dictionary<string, string> _wingetIds = BuiltinWinGetIds;
 
         [ModuleInitializer]
         internal static void Bootstrap()
@@ -77,6 +99,24 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             return false;
         }
 
+        /// <summary>该应用对应的 winget 包标识；没有对应包则返回 null。</summary>
+        internal static string? WinGetId(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
+            return _wingetIds.TryGetValue(name, out string? id) ? id : null;
+        }
+
+        /// <summary>
+        /// 是否应当交给 winget 处理：有对应 winget 包，且这台机器的 winget 真的可用。
+        /// 只有在两个条件都成立时才让 Scoop 侧隐藏该应用。
+        /// </summary>
+        internal static bool IsDelegatedToWinGet(string? name)
+        {
+            return WinGetId(name) is not null && WinGetProbe.IsAvailable;
+        }
+
         private static async Task RefreshAsync()
         {
             if (LoadOverride())
@@ -92,11 +132,12 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                 try
                 {
                     string body = await client.GetStringAsync(mirror);
-                    string[] names = Parse(body);
+                    (string[] names, Dictionary<string, string> winget) = Parse(body);
                     if (names.Length == 0)
                         continue;
 
                     _names = names;
+                    _wingetIds = winget.Count > 0 ? winget : BuiltinWinGetIds;
                     SaveCache(body);
                     return;
                 }
@@ -107,15 +148,29 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             }
         }
 
-        private static string[] Parse(string json)
+        private static (string[] Names, Dictionary<string, string> WinGet) Parse(string json)
         {
+            Dictionary<string, string> winget = new(StringComparer.OrdinalIgnoreCase);
             try
             {
                 using JsonDocument doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("winget", out JsonElement map)
+                    && map.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (JsonProperty entry in map.EnumerateObject())
+                    {
+                        string? id = entry.Value.ValueKind == JsonValueKind.String
+                            ? entry.Value.GetString()?.Trim()
+                            : null;
+                        if (!string.IsNullOrEmpty(entry.Name) && !string.IsNullOrEmpty(id))
+                            winget[entry.Name.Trim()] = id;
+                    }
+                }
+
                 if (!doc.RootElement.TryGetProperty("apps", out JsonElement apps))
-                    return [];
+                    return ([], winget);
                 if (apps.ValueKind != JsonValueKind.Array)
-                    return [];
+                    return ([], winget);
 
                 List<string> names = [];
                 foreach (JsonElement item in apps.EnumerateArray())
@@ -128,12 +183,12 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                         names.Add(text);
                 }
 
-                return names.ToArray();
+                return (names.ToArray(), winget);
             }
             catch (Exception e)
             {
                 Logger.Warn(e);
-                return [];
+                return ([], winget);
             }
         }
 
@@ -149,11 +204,12 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                 if (!File.Exists(path))
                     return false;
 
-                string[] names = Parse(File.ReadAllText(path));
+                (string[] names, Dictionary<string, string> winget) = Parse(File.ReadAllText(path));
                 if (names.Length == 0)
                     return false;
 
                 _names = names;
+                _wingetIds = winget.Count > 0 ? winget : BuiltinWinGetIds;
                 return true;
             }
             catch (Exception e)
@@ -169,9 +225,11 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             if (!File.Exists(path))
                 return;
 
-            string[] names = Parse(File.ReadAllText(path));
+            (string[] names, Dictionary<string, string> winget) = Parse(File.ReadAllText(path));
             if (names.Length > 0)
                 _names = names;
+            if (winget.Count > 0)
+                _wingetIds = winget;
         }
 
         private static void SaveCache(string body)

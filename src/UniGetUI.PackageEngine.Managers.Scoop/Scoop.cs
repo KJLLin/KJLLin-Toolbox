@@ -295,7 +295,12 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             "steam",
         ];
 
-        internal bool IsCurated(string? name) => CuratedCatalog.Contains(name);
+        /// <summary>
+        /// 精选名单里的应用是否应当由 Scoop 展示。winget 可用且该应用有对应 winget 包时返回 false，
+        /// 由 winget 引擎独占提供，避免同一个应用出现两条。
+        /// </summary>
+        internal bool IsCurated(string? name) =>
+            CuratedCatalog.Contains(name) && !CuratedCatalog.IsDelegatedToWinGet(name);
 
         private (string Bucket, string Version)? FindBucketManifestOnDisk(string id)
         {
