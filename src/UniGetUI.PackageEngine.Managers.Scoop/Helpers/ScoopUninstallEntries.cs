@@ -80,8 +80,8 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                         key.SetValue("Publisher", "KJLLin");
                         key.SetValue("InstallLocation", current);
                         key.SetValue("DisplayIcon", icon);
-                        key.SetValue("UninstallString", Cmd(name, apps));
-                        key.SetValue("QuietUninstallString", Cmd(name, apps));
+                        key.SetValue("UninstallString", Cmd(name));
+                        key.SetValue("QuietUninstallString", Cmd(name));
                         key.SetValue("NoModify", 1, RegistryValueKind.DWord);
                         key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
                         if (home is not null)
@@ -116,17 +116,10 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             }
         }
 
-        private static string Cmd(string app, string apps)
+        private static string Cmd(string app)
         {
-            string scoop = Path.Join(Path.GetDirectoryName(apps) ?? apps, "shims", "scoop.cmd");
-            string reg = "HKCU:" + "\\" + Root + "\\" + Prefix + app;
-            return "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& '"
-                + scoop
-                + "' uninstall '"
-                + app
-                + "'; if ($LASTEXITCODE -eq 0) { Remove-Item -LiteralPath '"
-                + reg
-                + "' -Recurse -Force }\"";
+            string exe = Environment.ProcessPath ?? "KJLLin Toolbox.exe";
+            return "\"" + exe + "\" --scoop-uninstall " + app;
         }
 
         private static string? AppsRoot()
