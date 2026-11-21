@@ -40,6 +40,9 @@ jobs:
       - name: Patch package manager set
         run: python branding/patch_managers.py --apply
 
+      - name: Remove legacy package managers
+        run: python branding/remove_legacy_managers.py
+
       - name: Patch uninstall request hooks
         run: python branding/patch_uninstall_hooks.py --apply
 

@@ -1,17 +1,17 @@
+#!/usr/bin/env python3
 """把 Scoop 源改成「默认只看自有源，可在设置里打开更多源，自有源优先」。
 
-上游的源列表来自 `scoop bucket list`（所有 bucket），搜索来自 `scoop-search`（全库搜），
-所以只裁剪 KnownSources 没有效果。这里在代码层加一道闸：
+这个脚本改四样东西：
 
-- 新增设置项 `ScoopShowAllSources`（默认关），设置页「Scoop sources」开关
-- 关闭时：源列表只保留自有 bucket，搜索/首页只保留自有源，更新也只报自有源
-- 打开时：全量显示，但自有源排前面，同一应用多个 bucket 都有时保留自有源那条
+- `Scoop.cs` 加 `ShowThirdPartySources` / `IsOwnSource`，搜索和更新按 bucket 过滤
+- `ScoopSourceHelper.ParseSources` 过滤掉非自有 bucket，打开开关时把它们排在后面
+- 设置里新增 `ScoopShowAllSources`
+- 设置页加「Scoop sources」开关
 
 用法（仓库根目录）：
-    python branding/patch_sources.py --check
     python branding/patch_sources.py --apply
 
-幂等：第二次运行报告 already patched，不重复写入。
+幂等：ParseSources 用固定版整体替换（按标记判断是否已替换过），其余改动按标记判断。
 """
 from __future__ import annotations
 
@@ -23,6 +23,8 @@ SCOOP = ROOT / "src/UniGetUI.PackageEngine.Managers.Scoop/Scoop.cs"
 HELPER = ROOT / "src/UniGetUI.PackageEngine.Managers.Scoop/Helpers/ScoopSourceHelper.cs"
 NAMES = ROOT / "src/UniGetUI.Core.Settings/SettingsEngine_Names.cs"
 GENERAL = ROOT / "src/UniGetUI.Avalonia/Views/Pages/SettingsPages/General.axaml"
+
+HELPER_MARKER = "// KJLLin: our own buckets first"
 
 report = []
 
@@ -132,45 +134,124 @@ def patch_scoop(text):
     return text
 
 
+CANONICAL_PARSE_SOURCES = """        internal IReadOnlyList<IManagerSource> ParseSources(IEnumerable<string> lines)
+        {
+            List<ManagerSource> sources = [];
+            var scoop = Manager as Scoop;
+            IReadOnlyList<int>? columns = null;
+
+            foreach (string rawLine in lines)
+            {
+                string line = ScoopTable.StripAnsiSequences(rawLine);
+
+                if (columns is null)
+                {
+                    columns = ScoopTable.ReadColumnStarts(line);
+                    continue;
+                }
+
+                if (columns.Count < 4 || string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                string name = ScoopTable.ReadColumn(line, columns, 0);
+                string source = ScoopTable.ReadColumn(line, columns, 1);
+                string updated = ScoopTable.ReadColumn(line, columns, 2);
+                string manifests = ScoopTable.ReadColumn(line, columns, 3);
+
+                if (name.Length is 0 || source.Length is 0 || manifests.Length is 0)
+                {
+                    continue;
+                }
+
+                if (scoop is not null && !scoop.ShowThirdPartySources && !scoop.IsOwnSource(name))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    Uri url = BuildSourceUrl(name, source);
+
+                    sources.Add(
+                        int.TryParse(manifests, out int packageCount)
+                            ? new ManagerSource(
+                                Manager,
+                                name,
+                                url,
+                                packageCount,
+                                Regex.Replace(updated, @"\\s+[AaPp][Mm]$", "")
+                            )
+                            : new ManagerSource(Manager, name, url, -1, "1/1/1970")
+                    );
+                }
+                catch (Exception e)
+                {
+                    Logger.Warn(e);
+                }
+            }
+
+            // KJLLin: our own buckets first
+            if (scoop is not null && scoop.ShowThirdPartySources)
+            {
+                return sources.OrderBy(item => scoop.IsOwnSource(item.Name) ? 0 : 1).ToList();
+            }
+
+            return sources;
+        }
+"""
+
+
+def replace_method(text, signature, replacement):
+    start = text.find(signature)
+    if start == -1:
+        return text
+    brace = text.find("{", start)
+    if brace == -1:
+        return text
+    depth = 0
+    index = brace
+    while index < len(text):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        index += 1
+    end = index + 1
+    if end < len(text) and text[end] == "\r":
+        end += 1
+    if end < len(text) and text[end] == "\n":
+        end += 1
+    return text[:start] + replacement + text[end:]
+
+
 def patch_helper(text):
-    if "ShowThirdPartySources" in text:
+    if HELPER_MARKER in text:
         report.append("  · ScoopSourceHelper.cs 已改过，跳过")
         return text
 
-    text = sub(
-        text,
-        "            List<ManagerSource> sources = [];\n",
-        "            List<ManagerSource> sources = [];\n            var scoop = Manager as Scoop;\n",
-        "ScoopSourceHelper 取得管理器",
-    )
-    text = sub(
-        text,
-        "                try\n                {\n                    Uri url = BuildSourceUrl(name, source);\n",
-        "                if (scoop is not null && !scoop.ShowThirdPartySources && !scoop.IsOwnSource(name))\n"
-        "                {\n"
-        "                    continue;\n"
-        "                }\n"
-        "\n"
-        "                try\n                {\n                    Uri url = BuildSourceUrl(name, source);\n",
-        "ScoopSourceHelper 过滤非自有 bucket",
-    )
-
-    anchor = "            return sources;\n        }"
-    if anchor in text:
-        text = text.replace(
-            anchor,
-            "            if (scoop is not null && scoop.ShowThirdPartySources)\n"
-            "            {\n"
-            "                return sources.OrderBy(item => scoop.IsOwnSource(item.Name) ? 0 : 1).ToList();\n"
-            "            }\n"
-            "\n"
-            "            return sources;\n        }",
-            1,
+    if "var scoop = Manager as Scoop;" not in text:
+        text = sub(
+            text,
+            "            List<ManagerSource> sources = [];\n",
+            "            List<ManagerSource> sources = [];\n            var scoop = Manager as Scoop;\n",
+            "ScoopSourceHelper 取得管理器",
         )
-        report.append("  · ScoopSourceHelper 自有源排前")
-    else:
-        report.append("  ! ScoopSourceHelper 找不到返回值锚点")
-    return text
+
+    updated = replace_method(
+        text,
+        "        internal IReadOnlyList<IManagerSource> ParseSources(",
+        CANONICAL_PARSE_SOURCES,
+    )
+    if updated == text:
+        report.append("  ! ScoopSourceHelper 找不到 ParseSources")
+        return text
+
+    report.append("  · ScoopSourceHelper ParseSources 重建（只自有 bucket + 自有源排前）")
+    return updated
 
 
 def patch_names(text):
