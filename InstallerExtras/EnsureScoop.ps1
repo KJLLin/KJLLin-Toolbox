@@ -44,5 +44,11 @@ foreach ($pair in ($BucketUrls -split ';')) {
   & $shim bucket add $name $url 2>&1 | ForEach-Object { Say ('  ' + $_) }
 }
 
+# Curated apps live in the upstream extras bucket; add it once so the store can offer them.
+if (-not ($have -match '(?m)^\s*extras\b')) {
+  Say 'adding extras bucket (curated apps)'
+  & $shim bucket add extras 2>&1 | ForEach-Object { Say ('  ' + $_) }
+}
+
 Say '=== bootstrap finished ==='
 exit 0

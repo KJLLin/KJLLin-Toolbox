@@ -34,6 +34,15 @@ jobs:
       - name: Patch Scoop source scoping
         run: python branding/patch_sources.py --apply
 
+      - name: Patch curated catalog
+        run: python branding/patch_curation.py --apply
+
+      - name: Patch package manager set
+        run: python branding/patch_managers.py --apply
+
+      - name: Patch uninstall request hooks
+        run: python branding/patch_uninstall_hooks.py --apply
+
       - name: Verify
         run: python branding/apply_brand.py --verify
 
