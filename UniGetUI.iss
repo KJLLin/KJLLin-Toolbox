@@ -4,9 +4,9 @@
 #define MyAppVersion "3.3.7"
 #define MyAppName "KJLLin Toolbox"
 #define MyAppPublisher "KJLLin"
-#define MyAppURL "https://github.com/KJLLin/UniGetUI"
+#define MyAppURL "https://github.com/KJLLin/KJLLin-Toolbox"
 #define MyAppExeName "UniGetUI.exe"
-#define MyAppPublisherURL "https://github.com/KJLLin/UniGetUI"
+#define MyAppPublisherURL "https://github.com/KJLLin/KJLLin-Toolbox"
 #define MyAppCopyright "Copyright 2021-2026 " + MyAppPublisher
 #define AutostartComponentKey "Software\Microsoft\Active Setup\Installed Components\Devolutions.UniGetUI.Autostart"
 #define AutostartRemovalKey "Software\Microsoft\Active Setup\Installed Components\Devolutions.UniGetUI.Autostart.Removal"
@@ -489,7 +489,7 @@ Name: "{autostartmenu}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUser
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: regularinstall\desktopicon; Check: not CmdLineParamExists('/NoDesktopShortcut')
 
 [Run]
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File -NonInteractive ""{tmp}\EnsureScoop.ps1"" -BucketUrls 'toolbox=https://gitee.com/kjllin/kjllin-toolbox|https://github.com/KJLLin/KJLLin-Toolbox;toolbox-beta=https://gitee.com/kjllin/kjllin-toolbox-beta|https://github.com/KJLLin/KJLLin-Toolbox-Beta'"; StatusMsg: "Preparing Scoop and the KJLLin Toolbox sources..."; WorkingDir: {app}; Flags: runhidden runasoriginaluser; Check: not CmdLineParamExists('/NoScoop')
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File -NonInteractive ""{tmp}\EnsureScoop.ps1"" -BucketUrls 'toolbox=https://gitee.com/kjllin/kjllin-toolbox-bucket|https://github.com/KJLLin/KJLLin-Toolbox-Bucket;toolbox-beta=https://gitee.com/kjllin/kjllin-toolbox-bucket-beta|https://github.com/KJLLin/KJLLin-Toolbox-Bucket-Beta'"; StatusMsg: "Preparing Scoop and the KJLLin Toolbox sources..."; WorkingDir: {app}; Flags: runhidden runasoriginaluser; Check: not CmdLineParamExists('/NoScoop')
 ; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File -NonInteractive ""{tmp}\EnsureWinGet.ps1"""; StatusMsg: "Ensuring WinGet is properly installed... (this may take a while)"; WorkingDir: {app}; Check: not CmdLineParamExists('/NoWinGet'); Flags: runhidden
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: runasoriginaluser nowait postinstall; Check: ShouldLaunchInForegroundAfterInstall;
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--daemon"; Flags: runasoriginaluser nowait postinstall; Check: ShouldLaunchInBackgroundAfterInstall;

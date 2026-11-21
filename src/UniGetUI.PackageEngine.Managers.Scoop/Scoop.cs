@@ -235,18 +235,18 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                     new ManagerSource(
                         this,
                         "toolbox",
-                        new Uri("https://github.com/KJLLin/KJLLin-Toolbox")
+                        new Uri("https://github.com/KJLLin/KJLLin-Toolbox-Bucket")
                     ),
                     new ManagerSource(
                         this,
                         "toolbox-beta",
-                        new Uri("https://github.com/KJLLin/KJLLin-Toolbox-Beta")
+                        new Uri("https://github.com/KJLLin/KJLLin-Toolbox-Bucket-Beta")
                     ),
                 ],
                 DefaultSource = new ManagerSource(
                     this,
                     "toolbox",
-                    new Uri("https://github.com/KJLLin/KJLLin-Toolbox")
+                    new Uri("https://github.com/KJLLin/KJLLin-Toolbox-Bucket")
                 ),
             };
 

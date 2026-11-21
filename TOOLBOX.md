@@ -17,8 +17,8 @@
 
 | 源 | 仓库 | 用途 |
 |---|---|---|
-| `toolbox` | `KJLLin/KJLLin-Toolbox` | 稳定版清单 |
-| `toolbox-beta` | `KJLLin/KJLLin-Toolbox-Beta` | 内测清单 |
+| `toolbox` | `KJLLin/KJLLin-Toolbox-Bucket` | 稳定版清单 |
+| `toolbox-beta` | `KJLLin/KJLLin-Toolbox-Bucket-Beta` | 内测清单 |
 
 两个仓库都是标准 Scoop bucket 结构：清单放在 `bucket/*.json`，客户端按 `checkver` / `autoupdate` 自动跟版本。
 
@@ -40,9 +40,9 @@ python branding/apply_brand.py --verify   # 查残留
 
 下载地址（每次 build 都会覆盖）：
 
-- 安装包：`https://github.com/KJLLin/UniGetUI/releases/download/nightly/KJLLin.Toolbox.Installer.x64.exe`
-- 便携 zip：`https://github.com/KJLLin/UniGetUI/releases/download/nightly/KJLLin.Toolbox.x64.zip`
-- 校验和：`https://github.com/KJLLin/UniGetUI/releases/download/nightly/checksums.x64.txt`
+- 安装包：`https://github.com/KJLLin/KJLLin-Toolbox/releases/download/nightly/KJLLin.Toolbox.Installer.x64.exe`
+- 便携 zip：`https://github.com/KJLLin/KJLLin-Toolbox/releases/download/nightly/KJLLin.Toolbox.x64.zip`
+- 校验和：`https://github.com/KJLLin/KJLLin-Toolbox/releases/download/nightly/checksums.x64.txt`
 
 触发方式：推送到 `polaris` 分支的 `src/**`、`branding/**`、`UniGetUI.iss`、`global.json` 或该 workflow 文件；也可以在 Actions 页面手动 `workflow_dispatch`。
 

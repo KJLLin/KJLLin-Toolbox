@@ -6,7 +6,7 @@ using UniGetUI.Core.Logging;
 namespace UniGetUI.PackageEngine.Managers.ScoopManager
 {
     /// <summary>
-    /// 精选第三方应用名单，来源是 KJLLin-Toolbox 仓库根目录的 curated.json。
+    /// 精选第三方应用名单，来源是 KJLLin-Toolbox-Bucket 仓库根目录的 curated.json。
     /// 启动时读本地缓存，后台拉远端刷新（每 6 小时一次），拉不到就用代码里内置的名单。
     /// 若存在本地覆盖文件 curated.override.json，则以它为准并停止拉取远端。
     /// </summary>
@@ -15,10 +15,10 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
         // 国内优先：jsDelivr 的 GitHub 通道，失败再走加速代理，最后直连。
         private static readonly string[] Mirrors =
         [
-            "https://gitee.com/kjllin/kjllin-toolbox/raw/main/curated.json",
-            "https://cdn.jsdelivr.net/gh/KJLLin/KJLLin-Toolbox@main/curated.json",
-            "https://ghfast.top/https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox/main/curated.json",
-            "https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox/main/curated.json",
+            "https://gitee.com/kjllin/kjllin-toolbox-bucket/raw/main/curated.json",
+            "https://cdn.jsdelivr.net/gh/KJLLin/KJLLin-Toolbox-Bucket@main/curated.json",
+            "https://ghfast.top/https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox-Bucket/main/curated.json",
+            "https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox-Bucket/main/curated.json",
         ];
 
         private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(30);

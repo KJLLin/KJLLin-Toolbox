@@ -22,7 +22,7 @@
 默认首页和「更新」页显示两类东西：
 
 1. 自有 bucket（`toolbox` / `toolbox-beta`）里的应用，永远优先；
-2. 精选第三方应用：名单从 `https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox/main/curated.json` 拉，缓存到 `%LOCALAPPDATA%\KJLLin Toolbox\curated.json`，每 6 小时刷新；拉不到就用 `Scoop.CuratedApps` 内置的那份。
+2. 精选第三方应用：名单从 `https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox-Bucket/main/curated.json` 拉，缓存到 `%LOCALAPPDATA%\KJLLin Toolbox\curated.json`，每 6 小时刷新；拉不到就用 `Scoop.CuratedApps` 内置的那份。
 
 改精选名单只需改 bucket 仓库里的 `curated.json`（`{"apps": ["7zip", "vscode", ...]}`），客户端下次刷新就生效，不用重新构建。
 
@@ -39,14 +39,14 @@
 `EnsureScoop.ps1` 的 `-BucketUrls` 支持给同一个 bucket 配多个地址，用 `|` 分隔，按顺序尝试，成功即停；失败的半成品会自动 `scoop bucket rm` 清掉再试下一个。当前顺序是 Gitee 镜像优先、GitHub 兜底：
 
 ```
-toolbox=https://gitee.com/kjllin/kjllin-toolbox|https://github.com/KJLLin/KJLLin-Toolbox
+toolbox=https://gitee.com/kjllin/kjllin-toolbox-bucket|https://github.com/KJLLin/KJLLin-Toolbox-Bucket
 ```
 
 Gitee 侧用「导入 GitHub 仓库」建镜像即可（公开仓库免费），仓库名保持 `kjllin-toolbox` / `kjllin-toolbox-beta`，代码里的地址就不用改。
 
 ## 国内镜像
 
-精选名单优先走 Gitee raw，其次 jsDelivr 的 GitHub 通道（`cdn.jsdelivr.net/gh/KJLLin/KJLLin-Toolbox@main/curated.json`），失败再走 `ghfast.top` 加速，最后才直连 raw.githubusercontent.com。Scoop 自身的 bucket clone 和 GitHub release 下载没有稳定可用的国内镜像接口，仍走直连。
+精选名单优先走 Gitee raw，其次 jsDelivr 的 GitHub 通道（`cdn.jsdelivr.net/gh/KJLLin/KJLLin-Toolbox-Bucket@main/curated.json`），失败再走 `ghfast.top` 加速，最后才直连 raw.githubusercontent.com。Scoop 自身的 bucket clone 和 GitHub release 下载没有稳定可用的国内镜像接口，仍走直连。
 
 ## 系统卸载入口
 
