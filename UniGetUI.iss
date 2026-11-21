@@ -470,6 +470,7 @@ Type: files; Name: "{app}\*.xbf"
 
 [Files]
 Source: "InstallerExtras\EnsureScoop.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall ignoreversion
+Source: "InstallerExtras\scoop-install.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall ignoreversion
 ; Deploy installer for autorepair jobs (unless disabled)
 Source: "{srcexe}"; DestDir: "{app}"; DestName: "UniGetUI.Installer.exe"; Flags: external ignoreversion; Tasks: regularinstall; Check: not CmdLineParamExists('/NoDeployInstaller');
 ; Deploy integrity tree

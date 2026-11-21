@@ -295,8 +295,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             "steam",
         ];
 
-        internal bool IsCurated(string? name) =>
-            name is not null && CuratedApps.Contains(name, StringComparer.OrdinalIgnoreCase);
+        internal bool IsCurated(string? name) => CuratedCatalog.Contains(name);
 
         private (string Bucket, string Version)? FindBucketManifestOnDisk(string id)
         {

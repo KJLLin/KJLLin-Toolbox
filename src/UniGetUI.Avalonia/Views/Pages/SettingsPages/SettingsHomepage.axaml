@@ -41,6 +41,7 @@
                 Icon="UAC"
                 Text="{t:Translate Administrator rights and other dangerous settings}"
                 UnderText="{t:Translate Text='Reduce UAC prompts, elevate installations by default, unlock certain dangerous features, etc.'}"
+                x:Name="AdministratorButton"
                 Command="{Binding NavigateToAdministratorCommand}"/>
 
             <Border Height="16"/>
@@ -80,6 +81,7 @@
                 Icon="ClipboardList"
                 Text="{t:Translate Package manager preferences}"
                 UnderText="{t:Translate Text='Enable and disable package managers, change default install options, etc.'}"
+                x:Name="ManagersButton"
                 Command="{Binding NavigateToManagersCommand}"/>
 
             <Border Height="16"/>
@@ -89,6 +91,7 @@
                 Icon="Extensions"
                 Text="{t:Translate Extensions}"
                 UnderText="{t:Translate Text='Optional tools that go beyond package management'}"
+                x:Name="ExtensionsButton"
                 Command="{Binding NavigateToExtensionsCommand}"/>
 
             <Border Height="16"/>
@@ -98,6 +101,7 @@
                 Icon="Search"
                 Text="{t:Translate Internet connection settings}"
                 UnderText="{t:Translate Text='Proxy settings, etc.'}"
+                x:Name="InternetButton"
                 Command="{Binding NavigateToInternetCommand}"/>
             <settings:SettingsPageButton x:Name="ExperimentalButton"
                 BorderThickness="1,0,1,1"

@@ -64,6 +64,16 @@
                                    Text="显示上游 Scoop 源（main、extras 等，非自有源；自有源仍优先）"
                                    CornerRadius="8"/>
 
+            <settings:TranslatedTextBlock Text="Developer options"
+                                          FontSize="14"
+                                          FontWeight="SemiBold"
+                                          Margin="44,32,4,8"/>
+
+            <settings:CheckboxCard x:Name="DeveloperModeCard"
+                                   SettingName="DeveloperMode"
+                                   Text="开发人员选项（显示包管理器设置、扩展、实验功能、代理等高级项）"
+                                   CornerRadius="8"/>
+
             <settings:TranslatedTextBlock Text="Telemetry"
                                           FontSize="14"
                                           FontWeight="SemiBold"
