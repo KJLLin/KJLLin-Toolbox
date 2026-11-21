@@ -79,6 +79,7 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
             List<ManagerSource> sources = [];
             var scoop = Manager as Scoop;
             var scoop = Manager as Scoop;
+            var scoop = Manager as Scoop;
             IReadOnlyList<int>? columns = null;
 
             foreach (string rawLine in lines)
@@ -126,6 +127,11 @@ namespace UniGetUI.PackageEngine.Managers.ScoopManager
                 {
                     Logger.Warn(e);
                 }
+            }
+
+            if (scoop is not null)
+            {
+                return sources.OrderBy(item => scoop.IsOwnSource(item.Name) ? 0 : 1).ToList();
             }
 
             if (scoop is not null)
