@@ -17,7 +17,6 @@ using UniGetUI.Interface.Enums;
 using UniGetUI.PackageEngine.Interfaces;
 using UniGetUI.PackageEngine.ManagerClasses.Manager;
 #if WINDOWS
-using UniGetUI.PackageEngine.Managers.ScoopManager;
 using UniGetUI.PackageEngine.Managers.WingetManager;
 #endif
 
@@ -496,7 +495,7 @@ public sealed class PackageWrapper : INotifyPropertyChanged, IDisposable, IPacka
         get
         {
 #if WINDOWS
-            if (Package.Manager is WinGet or Scoop) return true;
+            if (Package.Manager is WinGet) return true;
 #endif
             return false;
         }
