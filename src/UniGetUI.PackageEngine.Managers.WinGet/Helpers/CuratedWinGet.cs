@@ -13,9 +13,9 @@ namespace UniGetUI.PackageEngine.Managers.WingetManager
     /// The list can be replaced at runtime by the cloud config
     /// (<c>ToolboxCloudConfig.Curated</c>), so adding an app does not need a new build.
     /// </summary>
-    internal static class CuratedWinGet
+    public static class CuratedWinGet
     {
-        internal static readonly string[] DefaultIds =
+        public static readonly string[] DefaultIds =
         [
             "7zip.7zip",
             "Microsoft.VisualStudioCode",
@@ -36,15 +36,15 @@ namespace UniGetUI.PackageEngine.Managers.WingetManager
         private static volatile string[] _ids = DefaultIds;
         private static volatile HashSet<string> _lookup = new(DefaultIds, StringComparer.OrdinalIgnoreCase);
 
-        internal static IEnumerable<string> Ordered => _ids;
+        public static IEnumerable<string> Ordered => _ids;
 
-        internal static bool Contains(string? id)
+        public static bool Contains(string? id)
         {
             return id is not null && _lookup.Contains(id);
         }
 
         /// <summary>Applies a server-side catalogue. Empty input keeps the built-in list.</summary>
-        internal static void ApplyOverride(string[]? ids)
+        public static void ApplyOverride(string[]? ids)
         {
             if (ids is null || ids.Length == 0)
             {
