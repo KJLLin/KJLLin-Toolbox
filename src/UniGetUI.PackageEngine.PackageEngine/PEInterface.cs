@@ -6,7 +6,6 @@ using UniGetUI.PackageEngine.PackageClasses;
 using UniGetUI.PackageEngine.PackageLoader;
 #if WINDOWS
 using UniGetUI.PackageEngine.Managers.ChocolateyManager;
-using UniGetUI.PackageEngine.Managers.ScoopManager;
 using UniGetUI.PackageEngine.Managers.WingetManager;
 using UniGetUI.PackageEngine.Managers.WinInstallerManager;
 #else
@@ -30,7 +29,6 @@ namespace UniGetUI.PackageEngine
         private const int ManagerLoadTimeout = 60; // 60 seconds timeout for Package Manager initialization (in seconds)
 #if WINDOWS
         public static readonly WinGet? WinGet = Create(() => new WinGet());
-        public static readonly Scoop? Scoop = Create(() => new Scoop());
         public static readonly Chocolatey? Chocolatey = Create(() => new Chocolatey());
         public static readonly WinInstaller? WinInstaller = Create(() => new WinInstaller());
 #endif
@@ -97,7 +95,7 @@ namespace UniGetUI.PackageEngine
         {
             List<IPackageManager?> candidates = [];
 #if WINDOWS
-            candidates.InsertRange(0, [Scoop, WinGet]);
+            candidates.InsertRange(0, [WinGet]);
 #else
             candidates.Insert(0, Homebrew);
             if (OperatingSystem.IsMacOS())

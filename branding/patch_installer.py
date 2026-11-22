@@ -1,16 +1,17 @@
-"""把安装器接到 Scoop，并把客户端启动页固定成首页（Discover）。
+"""WinGet-only installer wiring + fixed start page.
 
-品牌改造由 branding/apply_brand.py 负责；这个脚本只管两件与“装完就能用”相关的事：
+Branding itself lives in apply_brand.py. This script only touches UniGetUI.iss and the
+start page, and it is fully idempotent:
 
-1. 安装器（UniGetUI.iss）装完后先确认 Scoop 存在、并注册自有 bucket ——
-   客户端只是 Scoop 的图形壳，本机没有 scoop 命令时源永远是空的。
-2. 启动页固定成 Discover —— 首页直接列出源里的软件，不再优先跳更新页。
+1. WinGet bootstrap: the installer must deploy EnsureWinGet.ps1 and run it before
+   anything else, so a machine that ships without App Installer still ends up with a
+   working winget. The script downloads nothing when winget is already present.
+2. Any leftover Scoop bootstrap lines are removed (the client is WinGet-only now).
+3. The start page stays pinned to Discover.
 
-用法（在仓库根目录）：
+Usage (from the repo root):
     python branding/patch_installer.py --check
     python branding/patch_installer.py --apply
-
-幂等：第二次运行只会报告“已存在”，不会重复写入。
 """
 from __future__ import annotations
 
@@ -23,9 +24,27 @@ CONFIG = ROOT / "branding" / "toolbox.json"
 ISS = ROOT / "UniGetUI.iss"
 VM = ROOT / "src" / "UniGetUI.Avalonia" / "ViewModels" / "MainWindowViewModel.cs"
 
-BS = chr(92)   # backslash
-NL = chr(10)   # newline
-Q = chr(34)    # double quote
+BS = chr(92)  # backslash
+NL = chr(10)  # newline
+Q = chr(34)  # double quote
+
+WINGET_SOURCE = (
+    "Source: " + Q + "InstallerExtras" + BS + "EnsureWinGet.ps1" + Q
+    + "; DestDir: " + Q + "{tmp}" + Q
+    + "; Flags: deleteafterinstall ignoreversion"
+)
+WINGET_RUN = (
+    "Filename: " + Q + "powershell.exe" + Q
+    + "; Parameters: " + Q
+    + "-ExecutionPolicy Bypass -File -NonInteractive " + Q + Q
+    + "{tmp}" + BS + "EnsureWinGet.ps1" + Q + Q
+    + Q
+    + "; StatusMsg: " + Q + "Checking Windows Package Manager (winget)..." + Q
+    + "; WorkingDir: {app}; Flags: runhidden runasoriginaluser"
+    + "; Check: not CmdLineParamExists('/NoWinGetBootstrap')"
+)
+
+SCOOP_MARKERS = ("EnsureScoop.ps1", "scoop-install.ps1")
 
 OLD_STARTUP = (
     "_ => UpgradablePackagesLoader.Instance is { } l && l.Count() > 0 "
@@ -40,12 +59,8 @@ def load_config():
     return json.loads(CONFIG.read_text("utf-8"))
 
 
-def bucket_arg(cfg):
-    return ";".join("%s=%s" % (s["name"], s["url"]) for s in cfg.get("sources", []))
-
-
 def insert_after_section(text, section, line):
-    """把一行插到某个 [Section] 标题的下一行，保持文件原有的换行风格。"""
+    """Insert a line right below a [Section] header, keeping the original line endings."""
     nl = (chr(13) + NL) if (chr(13) + NL) in text else NL
     marker = "[" + section + "]" + nl
     if marker not in text:
@@ -53,41 +68,42 @@ def insert_after_section(text, section, line):
     return text.replace(marker, marker + line + nl, 1)
 
 
+def strip_scoop_bootstrap(text):
+    nl = (chr(13) + NL) if (chr(13) + NL) in text else NL
+    kept = []
+    removed = 0
+    for line in text.split(nl):
+        if any(marker in line for marker in SCOOP_MARKERS):
+            removed += 1
+            continue
+        kept.append(line)
+    if removed:
+        report.append("installer: removed %d leftover Scoop line(s)" % removed)
+    return nl.join(kept)
+
+
 def patch_iss(text, cfg):
-    if not cfg.get("bootstrap_scoop"):
-        return text
-    if "EnsureScoop.ps1" in text:
-        report.append("installer: Scoop bootstrap already present")
-        return text
+    text = strip_scoop_bootstrap(text)
 
-    source_line = (
-        "Source: " + Q + "InstallerExtras" + BS + "EnsureScoop.ps1" + Q
-        + "; DestDir: " + Q + "{tmp}" + Q
-        + "; Flags: deleteafterinstall ignoreversion"
-    )
-    run_line = (
-        "Filename: " + Q + "powershell.exe" + Q
-        + "; Parameters: " + Q
-        + "-ExecutionPolicy Bypass -File -NonInteractive " + Q + Q
-        + "{tmp}" + BS + "EnsureScoop.ps1" + Q + Q
-        + " -BucketUrls '" + bucket_arg(cfg) + "'"
-        + Q
-        + "; StatusMsg: " + Q + "Preparing Scoop and the KJLLin Toolbox sources..." + Q
-        + "; WorkingDir: {app}; Flags: runhidden runasoriginaluser"
-        + "; Check: not CmdLineParamExists('/NoScoop')"
-    )
+    if "EnsureWinGet.ps1" not in text:
+        text_with_source = insert_after_section(text, "Files", WINGET_SOURCE)
+        if text_with_source is None:
+            report.append("installer: [Files] section not found, WinGet bootstrap not injected")
+            return text
+        text = text_with_source
+        report.append("installer: EnsureWinGet.ps1 added to [Files]")
 
-    text_after_files = insert_after_section(text, "Files", source_line)
-    if text_after_files is None:
-        report.append("installer: [Files] section not found, nothing injected")
-        return text
-    text_after_run = insert_after_section(text_after_files, "Run", run_line)
-    if text_after_run is None:
-        report.append("installer: [Run] section not found, nothing injected")
-        return text
+    if "NoWinGetBootstrap" in text:
+        report.append("installer: WinGet bootstrap already wired")
+    else:
+        text_with_run = insert_after_section(text, "Run", WINGET_RUN)
+        if text_with_run is None:
+            report.append("installer: [Run] section not found, WinGet bootstrap not scheduled")
+        else:
+            text = text_with_run
+            report.append("installer: EnsureWinGet.ps1 scheduled in [Run]")
 
-    report.append("installer: Scoop bootstrap injected (%s)" % bucket_arg(cfg))
-    return text_after_run
+    return text
 
 
 def patch_start_page(text, cfg):

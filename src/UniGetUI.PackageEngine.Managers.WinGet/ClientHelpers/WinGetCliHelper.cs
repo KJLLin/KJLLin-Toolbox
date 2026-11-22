@@ -275,12 +275,26 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
     {
         if (query.Length == 0)
         {
-            return GetSourcesForBrowse()
-                .SelectMany(source => SearchPackages(query, source, SearchLimits.MaxEmptyQueryResultsPerSource))
-                .ToArray();
+            // Browsing shows the curated catalogue only. Querying every source with an
+            // empty term returns thousands of unrelated packages.
+            List<Package> curated = [];
+            foreach (string id in CuratedWinGet.Ordered)
+            {
+                foreach (Package package in SearchPackages(id, null, 4))
+                {
+                    if (string.Equals(package.Id, id, StringComparison.OrdinalIgnoreCase))
+                    {
+                        curated.Add(package);
+                        break;
+                    }
+                }
+            }
+            return curated;
         }
 
-        return SearchPackages(query, null, MAX_SEARCH_RESULTS);
+        return SearchPackages(query, null, MAX_SEARCH_RESULTS)
+            .Where(package => CuratedWinGet.Contains(package.Id))
+            .ToList();
     }
 
     private List<IManagerSource> GetSourcesForBrowse()

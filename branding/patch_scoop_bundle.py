@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
-"""把构建时下载的 Scoop 安装脚本一起塞进安装包（[Files] 里多一行）。"""
+"""Scoop is no longer part of the client, so this step only cleans up after it.
+
+The installer used to bundle scoop-install.ps1 next to EnsureScoop.ps1. Both are gone
+from UniGetUI.iss now; this script removes any leftover line so an older branch that
+still carries them converges to the WinGet-only layout.
+"""
 import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ISS = ROOT / "UniGetUI.iss"
 
-BS = chr(92)
+MARKERS = ("scoop-install.ps1", "EnsureScoop.ps1")
 NL = chr(10)
-
-LINE = (
-    'Source: "InstallerExtras' + BS + 'scoop-install.ps1"; DestDir: "{tmp}"; '
-    'Flags: deleteafterinstall ignoreversion'
-)
-ANCHOR_START = 'Source: "InstallerExtras' + BS + 'EnsureScoop.ps1"'
 
 report = []
 
@@ -25,24 +24,25 @@ def main():
         return 1
 
     text = ISS.read_text("utf-8")
-    if "scoop-install.ps1" in text:
-        print("  · UniGetUI.iss 已包含 scoop-install.ps1")
-        return 0
-
     nl = (chr(13) + NL) if (chr(13) + NL) in text else NL
-    lines = text.split(nl)
-    index = next((i for i, line in enumerate(lines) if line.startswith(ANCHOR_START)), None)
-    if index is None:
-        print("  ! UniGetUI.iss 找不到 EnsureScoop 那一行")
+    kept = []
+    removed = 0
+    for line in text.split(nl):
+        if any(marker in line for marker in MARKERS):
+            removed += 1
+            continue
+        kept.append(line)
+
+    if not removed:
+        print("  · UniGetUI.iss 已无 Scoop 引导行")
         return 0
 
-    lines.insert(index + 1, LINE)
-    updated = nl.join(lines)
+    updated = nl.join(kept)
     if write:
         ISS.write_text(updated, "utf-8")
-        print("  ✓ UniGetUI.iss 加入 scoop-install.ps1")
+        print("  ✓ 移除 %d 行 Scoop 引导" % removed)
     else:
-        print("  ~ UniGetUI.iss 可写入")
+        print("  ~ 可移除 %d 行 Scoop 引导" % removed)
     return 0
 
 
