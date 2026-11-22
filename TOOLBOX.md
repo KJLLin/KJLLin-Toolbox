@@ -1,6 +1,6 @@
 # KJLLin Toolbox
 
-基于 [UniGetUI](https://github.com/Devolutions/UniGetUI)（MIT）改造的 Windows 应用分发客户端：界面与包管理能力继承上游，只保留自己的应用源。
+基于 [UniGetUI](https://github.com/Devolutions/UniGetUI)（MIT）改造的 Windows 应用分发客户端：界面与包管理能力继承上游，引擎只保留 winget，精选清单与自有应用全部由云端配置下发。
 
 ## 改造内容
 
@@ -9,18 +9,40 @@
 | `src/SharedAssemblyInfo.cs` | 程序集 Product / Title / Description / DefaultAlias → `KJLLin Toolbox` |
 | `src/UniGetUI.Avalonia/app.manifest` | 应用清单身份 → `KJLLin.Toolbox.Desktop` |
 | `UniGetUI.iss` | 安装器名称 / 发行方 / 网址，以及独立 `AppId`（避免与上游安装包互相覆盖） |
-| `src/UniGetUI.PackageEngine.Managers.Scoop/Scoop.cs` | **源列表裁剪成只剩 `toolbox` 与 `toolbox-beta`，默认源也切到自有 bucket** |
+| `src/UniGetUI.PackageEngine.PackageEngine/PEInterface.cs` | 引擎列表只保留 `WinGet`，Scoop 实例与工程引用已移除 |
+| `src/UniGetUI.PackageEngine.Managers.WinGet/Helpers/CuratedWinGet.cs` | 浏览只列精选项，搜索按精选 ID 过滤，清单可被云端覆盖 |
+| `src/UniGetUI.PackageEngine.PackageEngine/Toolbox/ToolboxCloudConfig.cs` | 云端配置拉取（Gitee → ghfast → GitHub，6 小时缓存） |
+| `src/UniGetUI.Avalonia/Infrastructure/Toolbox/WinGetLocalManifest.cs` | 自有应用走 `winget install --manifest`，首次按需一次提权启用策略 |
+| `src/UniGetUI.Avalonia/Infrastructure/Toolbox/StartMenuShortcuts.cs` | 安装后自建开始菜单 `.lnk`（portable 包本身不带快捷方式） |
+| `src/UniGetUI.Avalonia/Infrastructure/Toolbox/ToolboxOwnedApps.cs` | 自有应用版本比对、自动更新与状态记录 |
+| `InstallerExtras/EnsureWinGet.ps1` | 设备缺少 App Installer / winget 时从 Gitee 镜像补装 |
 | `src/Languages/lang_*.json` | 60 个语言包的译文替换（`Translate()` 查找用的英文 key 保持不动） |
 | `media/icon.png`、`src/SharedAssets/icon.ico` | 品牌图标（放进 `branding/assets/` 即生效） |
+
+## 云端配置
+
+客户端启动后读 `https://gitee.com/kjllin/kjllin-toolbox-bucket/raw/main/toolbox-config.json`，成功则缓存到 `%LOCALAPPDATA%\KJLLin Toolbox\cloud-config.json`，之后每 6 小时刷新一次，拉不到就用缓存。
+
+| 字段 | 作用 |
+|---|---|
+| `curated` | 精选 winget 包 ID 列表，覆盖客户端内置的 14 项 |
+| `mirrors` | 后续下载源的优先顺序 |
+| `shortcuts` | 是否给自有应用建开始菜单快捷方式 |
+| `announcement` | 客户端日志里的公告文本 |
+| `ownedApps[]` | 自有应用：`key` / `identifier` / `version` / `installerUrl` / `sha256` / `autoInstall` / `autoUpdate` |
+
+发一个版本只要改 `ownedApps[].version` 与 `installerUrl`，不需要重新出包。
 
 ## 自有源仓库
 
 | 源 | 仓库 | 用途 |
 |---|---|---|
-| `toolbox` | `KJLLin/KJLLin-Toolbox-Bucket` | 稳定版清单 |
+| `toolbox` | `KJLLin/KJLLin-Toolbox-Bucket` | 云端配置、精选清单、App Installer 引导包 |
 | `toolbox-beta` | `KJLLin/KJLLin-Toolbox-Bucket-Beta` | 内测清单 |
 
-两个仓库都是标准 Scoop bucket 结构：清单放在 `bucket/*.json`，客户端按 `checkver` / `autoupdate` 自动跟版本。
+两个仓库都镜像到 Gitee（`kjllin/kjllin-toolbox-bucket`、`kjllin-toolbox-bucket-beta`），客户端默认走 Gitee raw，GitHub 只作兜底。
+
+App Installer 引导包在 Gitee Release `winget-bootstrap` 里：单架构 `AppInstaller_x64.msix`（62.5 MB）加三个 x64 依赖包，匿名可下、sha256 已固定在校验表里。
 
 ## 一键改造
 
@@ -30,9 +52,9 @@ python branding/apply_brand.py --apply    # 写入
 python branding/apply_brand.py --verify   # 查残留
 ```
 
-参数全在 `branding/toolbox.json`：改名、换源、换域名只改这一个文件。脚本幂等，重复跑不会叠加。
+参数全在 `branding/toolbox.json`：改名、换源只改这一个文件。脚本幂等，重复跑不会叠加。
 
-向 `polaris` 分支推送 `branding/**` 时，`.github/workflows/polaris-brand.yml` 会先在 CI 里把语言包还原成上游版本再执行改造并提交，所以 60 个语言包、850 行的 `Scoop.cs` 都不需要本地处理。
+向 `polaris` 分支推送 `branding/**` 时，`.github/workflows/polaris-brand.yml` 会先在 CI 里把语言包还原成上游版本再执行改造并提交，所以 60 个语言包不需要本地处理。
 
 ## 自动构建（不需要本地环境）
 
@@ -56,11 +78,20 @@ pwsh ./scripts/build.ps1 -Configuration Release -Platform x64
 dotnet build src/UniGetUI.Avalonia/UniGetUI.Avalonia.csproj -c Release
 ```
 
+## 命令行
+
+```
+KJLLin.Toolbox.exe --toolbox-own-list                # 列出云端声明的自有应用
+KJLLin.Toolbox.exe --toolbox-own-install hpcl       # 立刻装/更新一个自有应用
+```
+
+安装走本地 manifest，第一次会弹一次 UAC 启用 `LocalManifestFiles`；用户拒绝时该应用保持未安装，客户端其余功能不受影响。
+
 ## 还需要你本机做的
 
 1. **图标**：`branding/assets/` 目前为空，客户端仍是上游图标。放 `icon.ico` / `icon.png` 后推一次即可替换。
 2. **签名**：CI 构建会临时去掉 `SignTool=azsign`。要消掉 SmartScreen 警告，得买或自签一张证书，再把 `scripts/sign.ps1` 需要的签名配置补上。
-3. **发布二进制**：`toolbox` / `toolbox-beta` 里的清单指向 `KJLLin/HPCL`、`KJLLin/ClipFlow` 的 Release 资产，这些 Release 需要真实上传对应 zip，否则安装会 404。
+3. **发布二进制**：`toolbox-config.json` 里 `ownedApps[].installerUrl` 指向 `kjllin/hpcl-launcher` 的 Release 资产，版本更新时这两个字段要一起改。
 
 ## 许可
 
