@@ -28,11 +28,6 @@
          folder as the plain references from the solution and Operations, and a parallel build (/m) can then run
          both CoreCompiles at once and fail with CS2012 ("file may be locked by VBCSCompiler"). -->
     <ItemGroup Condition="'$(BuildSharedWindowsTargetFrameworks)' == 'true'">
-        <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Scoop\UniGetUI.PackageEngine.Managers.Scoop.csproj"
-                          SkipGetTargetFrameworkProperties="true"
-                          UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained">
-            <ReferenceOutputAssembly Condition="'$(TargetFramework)' != '$(WindowsTargetFramework)'">false</ReferenceOutputAssembly>
-        </ProjectReference>
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.WinInstaller\UniGetUI.PackageEngine.Managers.WinInstaller.csproj"
                           SkipGetTargetFrameworkProperties="true"
                           UndefineProperties="TargetFramework;RuntimeIdentifier;SelfContained">

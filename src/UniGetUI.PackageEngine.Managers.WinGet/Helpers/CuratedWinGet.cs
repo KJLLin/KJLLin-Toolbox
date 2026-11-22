@@ -9,10 +9,13 @@ namespace UniGetUI.PackageEngine.Managers.WingetManager
     /// Toolbox is a store, not a mirror of the whole winget community source: browsing
     /// exposes only these identifiers, which keeps the list readable and keeps untested
     /// publishers out of the UI. Searching is filtered against the same set.
+    ///
+    /// The list can be replaced at runtime by the cloud config
+    /// (<c>ToolboxCloudConfig.Curated</c>), so adding an app does not need a new build.
     /// </summary>
     internal static class CuratedWinGet
     {
-        internal static readonly string[] Ids =
+        internal static readonly string[] DefaultIds =
         [
             "7zip.7zip",
             "Microsoft.VisualStudioCode",
@@ -30,13 +33,26 @@ namespace UniGetUI.PackageEngine.Managers.WingetManager
             "Valve.Steam",
         ];
 
-        private static readonly HashSet<string> Lookup = new(Ids, StringComparer.OrdinalIgnoreCase);
+        private static volatile string[] _ids = DefaultIds;
+        private static volatile HashSet<string> _lookup = new(DefaultIds, StringComparer.OrdinalIgnoreCase);
+
+        internal static IEnumerable<string> Ordered => _ids;
 
         internal static bool Contains(string? id)
         {
-            return id is not null && Lookup.Contains(id);
+            return id is not null && _lookup.Contains(id);
         }
 
-        internal static IEnumerable<string> Ordered => Ids;
+        /// <summary>Applies a server-side catalogue. Empty input keeps the built-in list.</summary>
+        internal static void ApplyOverride(string[]? ids)
+        {
+            if (ids is null || ids.Length == 0)
+            {
+                return;
+            }
+
+            _ids = ids;
+            _lookup = new HashSet<string>(ids, StringComparer.OrdinalIgnoreCase);
+        }
     }
 }

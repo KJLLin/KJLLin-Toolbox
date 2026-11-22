@@ -15,6 +15,7 @@ using Avalonia.Diagnostics;
 #endif
 using UniGetUI.Avalonia.Assets.Styles;
 using UniGetUI.Avalonia.Infrastructure;
+using UniGetUI.Avalonia.Infrastructure.Toolbox;
 using UniGetUI.Avalonia.Views;
 using UniGetUI.Avalonia.Views.Controls;
 using UniGetUI.Avalonia.Views.DialogPages;
@@ -263,6 +264,33 @@ public partial class App : Application
     private static async Task StartupAsync(MainWindow mainWindow, string[] args)
     {
         _ = UninstallRequestHandler.HandleAsync(mainWindow, args);
+        // Cloud-managed catalogue and self-hosted apps. Both run in the background:
+        // a slow or unreachable mirror must never delay the window.
+        _ = ToolboxOwnedApps.HandleCommandLineAsync(args);
+        ToolboxOwnedApps.StartInBackground();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                PackageEngine.Toolbox.ToolboxConfig config =
+                    await PackageEngine.Toolbox.ToolboxCloudConfig.GetAsync().ConfigureAwait(false);
+#if WINDOWS
+                if (config.Curated.Length > 0)
+                {
+                    PackageEngine.Managers.WingetManager.CuratedWinGet.ApplyOverride(config.Curated);
+                }
+#endif
+                if (!string.IsNullOrWhiteSpace(config.Announcement))
+                {
+                    Logger.Info($"Toolbox announcement: {config.Announcement}");
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Warn($"Toolbox cloud config could not be applied: {e.Message}");
+            }
+        });
+
         // Show crash report from the previous session and wait for the user
         // to dismiss it before continuing with normal startup.
         if (File.Exists(CrashHandler.PendingCrashFile))

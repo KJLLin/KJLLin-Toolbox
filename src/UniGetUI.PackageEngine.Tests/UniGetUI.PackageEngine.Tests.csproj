@@ -46,7 +46,6 @@
     <ItemGroup Condition="'$(TargetFramework)' == '$(WindowsTargetFramework)'">
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Chocolatey\UniGetUI.PackageEngine.Managers.Chocolatey.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.PowerShell7\UniGetUI.PackageEngine.Managers.PowerShell7.csproj" />
-        <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.Scoop\UniGetUI.PackageEngine.Managers.Scoop.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.WinGet\UniGetUI.PackageEngine.Managers.WinGet.csproj" />
         <ProjectReference Include="..\UniGetUI.PackageEngine.Managers.WinInstaller\UniGetUI.PackageEngine.Managers.WinInstaller.csproj" />
     </ItemGroup>
