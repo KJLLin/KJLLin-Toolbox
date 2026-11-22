@@ -88,10 +88,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          if (gh release view nightly 2>$null) {
-            gh release delete nightly --yes --cleanup-tag
+          # A deleted release can still hold its tag for a moment, and two builds
+          # can overlap; both paths must end with an updated nightly, never a failure.
+          gh release delete nightly --yes --cleanup-tag 2>$null
+          Start-Sleep -Seconds 3
+          $notes = "由 GitHub Actions 自动构建，未签名，首次运行需允许 SmartScreen。build #${{ github.run_number }}，commit ${{ github.sha }}。"
+          gh release create nightly output/* --title "KJLLin Toolbox 自动构建" --notes $notes --prerelease
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "nightly still exists, uploading into it instead"
+            gh release upload nightly output/* --clobber
+            gh release edit nightly --title "KJLLin Toolbox 自动构建" --notes $notes --prerelease
+            if ($LASTEXITCODE -ne 0) { exit 1 }
           }
-          gh release create nightly output/* `
-            --title "KJLLin Toolbox 自动构建" `
-            --notes "由 GitHub Actions 自动构建，未签名，首次运行需允许 SmartScreen。build #${{ github.run_number }}，commit ${{ github.sha }}。" `
-            --prerelease
