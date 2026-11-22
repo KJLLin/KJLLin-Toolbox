@@ -91,7 +91,7 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
                 "InstallerType: portable",
                 "Installers:",
                 "  - Architecture: x64",
-                $"    InstallerUrl: {app.InstallerUrl}",
+                $"    InstallerUrl: {ToolboxCloudConfig.ResolveInstallerUrl(app.InstallerUrl)}",
                 $"    InstallerSha256: {app.Sha256!.ToUpperInvariant()}",
             };
             if (!string.IsNullOrWhiteSpace(app.CommandAlias))

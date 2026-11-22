@@ -292,6 +292,15 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
             return curated;
         }
 
+        // Search scope is a cloud switch: "curated" keeps the store closed, "all" lets
+        // installed users look up anything in the source while browsing stays curated.
+        if (CuratedWinGet.SearchAll)
+        {
+            return SearchPackages(query, null, MAX_SEARCH_RESULTS)
+                .Where(package => !CuratedWinGet.IsBlocked(package.Id))
+                .ToList();
+        }
+
         return SearchPackages(query, null, MAX_SEARCH_RESULTS)
             .Where(package => CuratedWinGet.Contains(package.Id))
             .ToList();

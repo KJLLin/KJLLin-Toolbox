@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace UniGetUI.PackageEngine.Managers.WingetManager
 {
@@ -8,10 +9,10 @@ namespace UniGetUI.PackageEngine.Managers.WingetManager
     ///
     /// Toolbox is a store, not a mirror of the whole winget community source: browsing
     /// exposes only these identifiers, which keeps the list readable and keeps untested
-    /// publishers out of the UI. Searching is filtered against the same set.
+    /// publishers out of the UI. The browse order is the order of the list itself.
     ///
-    /// The list can be replaced at runtime by the cloud config
-    /// (<c>ToolboxCloudConfig.Curated</c>), so adding an app does not need a new build.
+    /// Everything here is replaced at runtime by the cloud config, so adding an app,
+    /// pulling a broken one or widening the search scope does not need a new build.
     /// </summary>
     public static class CuratedWinGet
     {
@@ -35,24 +36,45 @@ namespace UniGetUI.PackageEngine.Managers.WingetManager
 
         private static volatile string[] _ids = DefaultIds;
         private static volatile HashSet<string> _lookup = new(DefaultIds, StringComparer.OrdinalIgnoreCase);
+        private static volatile HashSet<string> _blocked = new(StringComparer.OrdinalIgnoreCase);
+        private static volatile bool _searchAll;
 
-        public static IEnumerable<string> Ordered => _ids;
+        /// <summary>Catalogue order, minus anything the cloud pulled.</summary>
+        public static IEnumerable<string> Ordered => _ids.Where(id => !_blocked.Contains(id));
+
+        /// <summary>True when free-text search covers the whole source instead of the catalogue.</summary>
+        public static bool SearchAll => _searchAll;
+
+        public static bool IsBlocked(string? id)
+        {
+            return id is not null && _blocked.Contains(id);
+        }
 
         public static bool Contains(string? id)
         {
-            return id is not null && _lookup.Contains(id);
+            return id is not null && _lookup.Contains(id) && !_blocked.Contains(id);
         }
 
-        /// <summary>Applies a server-side catalogue. Empty input keeps the built-in list.</summary>
-        public static void ApplyOverride(string[]? ids)
+        /// <summary>
+        /// Applies a server-side catalogue. A missing or empty identifier list keeps the
+        /// current one, so a partial config cannot accidentally empty the store.
+        /// </summary>
+        public static void ApplyOverride(string[]? ids, string[]? blocked = null, bool? searchAll = null)
         {
-            if (ids is null || ids.Length == 0)
+            if (ids is { Length: > 0 })
             {
-                return;
+                _ids = ids;
+                _lookup = new HashSet<string>(ids, StringComparer.OrdinalIgnoreCase);
             }
 
-            _ids = ids;
-            _lookup = new HashSet<string>(ids, StringComparer.OrdinalIgnoreCase);
+            _blocked = new HashSet<string>(
+                blocked ?? [],
+                StringComparer.OrdinalIgnoreCase);
+
+            if (searchAll is { } value)
+            {
+                _searchAll = value;
+            }
         }
     }
 }

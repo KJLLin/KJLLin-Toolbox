@@ -10,8 +10,8 @@
 | `src/UniGetUI.Avalonia/app.manifest` | 应用清单身份 → `KJLLin.Toolbox.Desktop` |
 | `UniGetUI.iss` | 安装器名称 / 发行方 / 网址，以及独立 `AppId`（避免与上游安装包互相覆盖） |
 | `src/UniGetUI.PackageEngine.PackageEngine/PEInterface.cs` | 引擎列表只保留 `WinGet`，Scoop 实例与工程引用已移除 |
-| `src/UniGetUI.PackageEngine.Managers.WinGet/Helpers/CuratedWinGet.cs` | 浏览只列精选项，搜索按精选 ID 过滤，清单可被云端覆盖 |
-| `src/UniGetUI.PackageEngine.PackageEngine/Toolbox/ToolboxCloudConfig.cs` | 云端配置拉取（Gitee → ghfast → GitHub，6 小时缓存） |
+| `src/UniGetUI.PackageEngine.Managers.WinGet/Helpers/CuratedWinGet.cs` | 浏览只列精选项，搜索范围由 `searchScope` 决定，清单与拉黑可由云端覆盖 |
+| `src/UniGetUI.PackageEngine.PackageEngine/Toolbox/ToolboxCloudConfig.cs` | 云端配置拉取（镜像顺序、刷新间隔、横幅、已读记录均可由云端控制） |
 | `src/UniGetUI.Avalonia/Infrastructure/Toolbox/WinGetLocalManifest.cs` | 自有应用走 `winget install --manifest`，首次按需一次提权启用策略 |
 | `src/UniGetUI.Avalonia/Infrastructure/Toolbox/StartMenuShortcuts.cs` | 安装后自建开始菜单 `.lnk`（portable 包本身不带快捷方式） |
 | `src/UniGetUI.Avalonia/Infrastructure/Toolbox/ToolboxOwnedApps.cs` | 自有应用版本比对、自动更新与状态记录 |
@@ -21,17 +21,22 @@
 
 ## 云端配置
 
-客户端启动后读 `https://gitee.com/kjllin/kjllin-toolbox-bucket/raw/main/toolbox-config.json`，成功则缓存到 `%LOCALAPPDATA%\KJLLin Toolbox\cloud-config.json`，之后每 6 小时刷新一次，拉不到就用缓存。
+客户端启动后按镜像顺序拉 `toolbox-config.json`（默认 Gitee raw → ghfast → GitHub raw），成功则缓存到 `%LOCALAPPDATA%\KJLLin Toolbox\cloud-config.json`，之后按 `refreshHours`（默认 6 小时）刷新，拉不到就用缓存，缓存也没有才用内置默认值。
 
 | 字段 | 作用 |
 |---|---|
-| `curated` | 精选 winget 包 ID 列表，覆盖客户端内置的 14 项 |
-| `mirrors` | 后续下载源的优先顺序 |
-| `shortcuts` | 是否给自有应用建开始菜单快捷方式 |
-| `announcement` | 客户端日志里的公告文本 |
+| `curated` | 精选 winget 包 ID 列表，覆盖客户端内置的 14 项，数组顺序即浏览顺序 |
+| `blockedIds` | 从浏览和搜索中拉黑的 ID，优先级高于 `curated` |
+| `searchScope` | `curated` 时搜索只命中精选，`all` 时搜索覆盖整个源（浏览始终只列精选） |
+| `mirrors` | 下载前缀顺序：既用于拉配置本身，也用于把 GitHub 的安装包地址改写成加速前缀 |
+| `refreshHours` | 配置刷新间隔，1–168 小时 |
+| `shortcuts` | 自有应用装完是否建开始菜单快捷方式（总开关） |
+| `desktopShortcuts` | 是否额外放一份桌面快捷方式 |
+| `notice` | 主窗口横幅：`id`（关掉后同一 id 不再弹）、`level`（info/warning/error/success）、`title`、`message`、`url`、`urlLabel`、`closable` |
+| `announcement` | 旧版纯文本公告，`notice` 存在时以 `notice` 为准 |
 | `ownedApps[]` | 自有应用：`key` / `identifier` / `version` / `installerUrl` / `sha256` / `autoInstall` / `autoUpdate` |
 
-发一个版本只要改 `ownedApps[].version` 与 `installerUrl`，不需要重新出包。
+发一个版本只要改 `ownedApps[].version` 与 `installerUrl`，不需要重新出包。`notice` 的 `id` 留空表示每次启动都弹；填了 id 则用户关掉后本机不再显示。
 
 ## 自有源仓库
 

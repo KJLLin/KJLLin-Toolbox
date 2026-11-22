@@ -8,7 +8,7 @@ using UniGetUI.PackageEngine.Toolbox;
 namespace UniGetUI.Avalonia.Infrastructure.Toolbox
 {
     /// <summary>
-    /// Start menu shortcuts for Toolbox-owned apps.
+    /// Start menu and desktop shortcuts for Toolbox-owned apps.
     ///
     /// winget's portable installer only drops the binary under
     /// %LOCALAPPDATA%\Microsoft\WinGet\Packages and never creates a shortcut, so the
@@ -20,6 +20,9 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
         private static string ProgramsDirectory => Path.Join(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Microsoft", "Windows", "Start Menu", "Programs");
+
+        private static string DesktopDirectory =>
+            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 
         internal static string? FindExecutable(ToolboxOwnedAppConfig app)
         {
@@ -52,7 +55,15 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
             }
         }
 
-        internal static bool Ensure(ToolboxOwnedAppConfig app, bool shortcutsEnabled)
+        /// <summary>
+        /// Creates the shortcuts the cloud asked for. <paramref name="shortcutsEnabled"/>
+        /// is the master switch for the start menu entry, <paramref name="desktopEnabled"/>
+        /// adds a desktop copy on top.
+        /// </summary>
+        internal static bool Ensure(
+            ToolboxOwnedAppConfig app,
+            bool shortcutsEnabled,
+            bool desktopEnabled = false)
         {
             if (!shortcutsEnabled || string.IsNullOrWhiteSpace(app.Key))
             {
@@ -67,7 +78,21 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
             }
 
             string name = app.ShortcutName ?? app.DisplayName ?? app.Key;
-            string link = Path.Join(ProgramsDirectory, name + ".lnk");
+            bool startMenu = CreateLink(Path.Join(ProgramsDirectory, name + ".lnk"), target, app, name);
+            if (desktopEnabled)
+            {
+                CreateLink(Path.Join(DesktopDirectory, name + ".lnk"), target, app, name);
+            }
+
+            return startMenu;
+        }
+
+        private static bool CreateLink(
+            string link,
+            string target,
+            ToolboxOwnedAppConfig app,
+            string name)
+        {
             if (File.Exists(link))
             {
                 return true;
@@ -75,7 +100,7 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
 
             try
             {
-                Directory.CreateDirectory(ProgramsDirectory);
+                Directory.CreateDirectory(Path.GetDirectoryName(link) ?? "");
                 string script =
                     "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('" + Escape(link) + "');"
                     + "$s.TargetPath='" + Escape(target) + "';"
@@ -99,7 +124,7 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
                 process.WaitForExit(30000);
                 if (process.ExitCode == 0 && File.Exists(link))
                 {
-                    Logger.Info($"Start menu shortcut created: {link}");
+                    Logger.Info($"Shortcut created: {link}");
                     return true;
                 }
 

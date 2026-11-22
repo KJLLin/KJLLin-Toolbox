@@ -215,6 +215,8 @@ public partial class MainWindow : Window
     public DriversViewModel? Drivers => ViewModel.Drivers;
     public void SetGitRepositoriesEnabled(bool enabled) => ViewModel.SetGitRepositoriesEnabled(enabled);
     public void SetExtensionEnabled(PageType page, bool enabled) => ViewModel.SetExtensionEnabled(page, enabled);
+    internal void ApplyCloudNotice(PackageEngine.Toolbox.ToolboxConfig config)
+        => ViewModel.ApplyCloudNotice(config.Notice, config.Announcement);
 #if UNIGETUI_XCODE_EXTENSION
     public bool XcodeEnabled => ViewModel.Sidebar.XcodeEnabled;
     public XcodeViewModel? Xcode => ViewModel.Xcode;

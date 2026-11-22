@@ -275,15 +275,19 @@ public partial class App : Application
                 PackageEngine.Toolbox.ToolboxConfig config =
                     await PackageEngine.Toolbox.ToolboxCloudConfig.GetAsync().ConfigureAwait(false);
 #if WINDOWS
-                if (config.Curated.Length > 0)
-                {
-                    PackageEngine.Managers.WingetManager.CuratedWinGet.ApplyOverride(config.Curated);
-                }
+                // Search scope and the blocklist ride on the same push as the catalogue,
+                // so pulling a misbehaving package needs neither approval nor a rebuild.
+                bool searchAll = string.Equals(
+                    config.SearchScope, "all", StringComparison.OrdinalIgnoreCase);
+                PackageEngine.Managers.WingetManager.CuratedWinGet.ApplyOverride(
+                    config.Curated, config.BlockedIds, searchAll);
 #endif
-                if (!string.IsNullOrWhiteSpace(config.Announcement))
+                if (config.Notice is not null || !string.IsNullOrWhiteSpace(config.Announcement))
                 {
-                    Logger.Info($"Toolbox announcement: {config.Announcement}");
+                    Logger.Info($"Toolbox notice: {config.Notice?.Title ?? config.Announcement}");
                 }
+
+                Dispatcher.UIThread.Post(() => mainWindow.ApplyCloudNotice(config));
             }
             catch (Exception e)
             {

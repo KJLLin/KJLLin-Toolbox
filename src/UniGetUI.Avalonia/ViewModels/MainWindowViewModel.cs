@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Collections;
@@ -23,6 +24,7 @@ using UniGetUI.Interface.Enums;
 using UniGetUI.PackageEngine;
 using UniGetUI.PackageEngine.Enums;
 using UniGetUI.PackageEngine.Interfaces;
+using UniGetUI.PackageEngine.Toolbox;
 using UniGetUI.PackageEngine.ManagerClasses.Classes;
 using UniGetUI.PackageEngine.Operations.Reboot;
 using UniGetUI.PackageEngine.PackageLoader;
@@ -391,6 +393,9 @@ public partial class MainWindowViewModel : ViewModelBase
     public InfoBarViewModel TelemetryWarner { get; } = new() { Severity = InfoBarSeverity.Informational };
     public InfoBarViewModel PortableImportBanner { get; } = new() { Severity = InfoBarSeverity.Informational };
     public InfoBarViewModel ManagerHealthBanner { get; } = new() { Severity = InfoBarSeverity.Warning };
+    // Cloud-pushed banner: release notes, maintenance windows, a pulled app or a mirror
+    // outage. It sits above the updater banner because it is the operator speaking.
+    public InfoBarViewModel AnnouncementBanner { get; } = new() { Severity = InfoBarSeverity.Informational };
     private string _managerHealthBannerKey = "";
 
     // Oldest first (rendered bottom-up so the newest sits nearest the corner).
@@ -521,6 +526,7 @@ public partial class MainWindowViewModel : ViewModelBase
         RegisterBannerToast(TelemetryWarner);
         RegisterBannerToast(PortableImportBanner);
         RegisterBannerToast(ManagerHealthBanner);
+        RegisterBannerToast(AnnouncementBanner);
 
         CatalogEditor = Sidebar.CatalogEditorEnabled ? new CatalogEditorViewModel() : null;
         DiscoverPage = new DiscoverSoftwarePage(CatalogEditor);
@@ -1321,6 +1327,70 @@ public partial class MainWindowViewModel : ViewModelBase
                 _ = AvaloniaAutoUpdater.CheckAndInstallUpdatesAsync(autoLaunch: false, manualCheck: true);
             else
                 await ShowSelfUpdateDialogAsync();
+        }
+    }
+
+    /// <summary>
+    /// Raises the cloud banner. A notice carrying an id is shown once per machine: closing
+    /// it records the id so the same push never reappears. The plain-text Announcement of
+    /// older configs keeps working and shows on every start.
+    /// </summary>
+    internal void ApplyCloudNotice(ToolboxNoticeConfig? notice, string? legacyMessage)
+    {
+        string message = notice?.Message ?? "";
+        if (string.IsNullOrWhiteSpace(message))
+            message = legacyMessage ?? "";
+        if (string.IsNullOrWhiteSpace(message))
+            return;
+
+        string id = notice?.Id ?? "";
+        if (ToolboxCloudConfig.IsNoticeDismissed(id))
+            return;
+
+        AnnouncementBanner.Severity = notice?.Level switch
+        {
+            "warning" => InfoBarSeverity.Warning,
+            "error" => InfoBarSeverity.Error,
+            "success" => InfoBarSeverity.Success,
+            _ => InfoBarSeverity.Informational,
+        };
+        AnnouncementBanner.Title = string.IsNullOrWhiteSpace(notice?.Title)
+            ? "KJLLin Toolbox"
+            : notice!.Title;
+        AnnouncementBanner.Message = message;
+        AnnouncementBanner.IsClosable = notice?.Closable ?? true;
+
+        string url = notice?.Url ?? "";
+        if (url.Length > 0)
+        {
+            AnnouncementBanner.ActionButtonText = string.IsNullOrWhiteSpace(notice?.UrlLabel)
+                ? CoreTools.Translate("Learn more")
+                : notice!.UrlLabel;
+            AnnouncementBanner.ActionButtonCommand =
+                new CommunityToolkit.Mvvm.Input.RelayCommand(() => OpenExternalLink(url));
+        }
+        else
+        {
+            AnnouncementBanner.ActionButtonText = "";
+            AnnouncementBanner.ActionButtonCommand = null;
+        }
+
+        AnnouncementBanner.OnClosed = string.IsNullOrWhiteSpace(id)
+            ? null
+            : () => ToolboxCloudConfig.DismissNotice(id);
+
+        AnnouncementBanner.IsOpen = true;
+    }
+
+    private static void OpenExternalLink(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        }
+        catch (System.Exception e)
+        {
+            Logger.Warn($"Could not open {url}: {e.Message}");
         }
     }
 

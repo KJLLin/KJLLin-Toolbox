@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -30,32 +32,70 @@ namespace UniGetUI.PackageEngine.Toolbox
     }
 
     /// <summary>
-    /// The cloud side of Toolbox: the curated catalogue, the mirror order and the
-    /// self-hosted applications are all server-controlled. Clients cache the last good
-    /// copy and refresh every few hours, so a config push reaches installed devices
-    /// without shipping a new build.
+    /// A banner the cloud can raise in the main window: release notes, maintenance
+    /// windows, a broken mirror or a deprecation warning. <see cref="Id"/> makes it
+    /// dismissible once per client; leave it empty to show the banner on every start.
+    /// </summary>
+    public sealed class ToolboxNoticeConfig
+    {
+        public string Id { get; set; } = "";
+        public string Level { get; set; } = "info";
+        public string Title { get; set; } = "";
+        public string Message { get; set; } = "";
+        public string Url { get; set; } = "";
+        public string UrlLabel { get; set; } = "";
+        public bool Closable { get; set; } = true;
+    }
+
+    /// <summary>
+    /// The cloud side of Toolbox: the curated catalogue, the mirror order, the client
+    /// behaviour switches and the self-hosted applications are all server-controlled.
+    /// Clients cache the last good copy and refresh every few hours, so a config push
+    /// reaches installed devices without shipping a new build.
     /// </summary>
     public sealed class ToolboxConfig
     {
-        public int Schema { get; set; } = 1;
+        public int Schema { get; set; } = 2;
         public string Engine { get; set; } = "winget";
+
+        /// <summary>Identifiers shown while browsing. Order is significant: it is the browse order.</summary>
         public string[] Curated { get; set; } = [];
+
+        /// <summary>Identifiers hidden from browsing and from search, even when listed in Curated.</summary>
+        public string[] BlockedIds { get; set; } = [];
+
+        /// <summary><c>curated</c> keeps free-text search inside the catalogue, <c>all</c> searches the whole source.</summary>
+        public string SearchScope { get; set; } = "curated";
+
+        /// <summary>Prefixes used for config and installer downloads, in order. An entry may proxy an absolute URL.</summary>
         public string[] Mirrors { get; set; } = [];
+
+        /// <summary>Hours between config refreshes, clamped to 1..168.</summary>
+        public int RefreshHours { get; set; } = 6;
+
         public bool Shortcuts { get; set; } = true;
+        public bool DesktopShortcuts { get; set; }
+
+        /// <summary>Plain-text banner, kept for old configs. <see cref="Notice"/> supersedes it.</summary>
         public string Announcement { get; set; } = "";
+
+        public ToolboxNoticeConfig? Notice { get; set; }
         public ToolboxOwnedAppConfig[] OwnedApps { get; set; } = [];
     }
 
     public static class ToolboxCloudConfig
     {
-        private static readonly string[] Sources =
+        private const string ConfigFileName = "toolbox-config.json";
+        private const string DismissedFileName = "dismissed-notices.json";
+
+        /// <summary>Last-resort endpoints, used when no mirror from the cache resolves.</summary>
+        private static readonly string[] FallbackSources =
         [
             "https://gitee.com/kjllin/kjllin-toolbox-bucket/raw/main/toolbox-config.json",
             "https://ghfast.top/https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox-Bucket/main/toolbox-config.json",
             "https://raw.githubusercontent.com/KJLLin/KJLLin-Toolbox-Bucket/main/toolbox-config.json",
         ];
 
-        private static readonly TimeSpan RefreshInterval = TimeSpan.FromHours(6);
         private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
         private static readonly SemaphoreSlim Gate = new(1, 1);
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -65,6 +105,7 @@ namespace UniGetUI.PackageEngine.Toolbox
 
         private static ToolboxConfig? _current;
         private static DateTime _loadedAt = DateTime.MinValue;
+        private static HashSet<string>? _dismissed;
 
         public static string DataDirectory => Path.Join(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -72,10 +113,14 @@ namespace UniGetUI.PackageEngine.Toolbox
 
         public static string CacheFile => Path.Join(DataDirectory, "cloud-config.json");
 
+        private static string DismissedFile => Path.Join(DataDirectory, DismissedFileName);
+
         /// <summary>Built-in fallback, used only before the first successful fetch.</summary>
         public static ToolboxConfig Defaults { get; } = new()
         {
             Engine = "winget",
+            SearchScope = "curated",
+            RefreshHours = 6,
             Shortcuts = true,
             Curated =
             [
@@ -102,6 +147,34 @@ namespace UniGetUI.PackageEngine.Toolbox
         };
 
         public static ToolboxConfig? Current => _current;
+
+        /// <summary>The mirror list actually in force: the cloud one when present, else the built-in list.</summary>
+        public static string[] ActiveMirrors
+        {
+            get
+            {
+                string[] mirrors = _current?.Mirrors ?? [];
+                return mirrors.Length > 0 ? mirrors : Defaults.Mirrors;
+            }
+        }
+
+        private static TimeSpan RefreshInterval
+        {
+            get
+            {
+                int hours = _current?.RefreshHours ?? Defaults.RefreshHours;
+                if (hours < 1)
+                {
+                    hours = 1;
+                }
+                else if (hours > 168)
+                {
+                    hours = 168;
+                }
+
+                return TimeSpan.FromHours(hours);
+            }
+        }
 
         public static async Task<ToolboxConfig> GetAsync(bool force = false, CancellationToken ct = default)
         {
@@ -144,9 +217,70 @@ namespace UniGetUI.PackageEngine.Toolbox
             }
         }
 
+        /// <summary>
+        /// Expands the config file name through the mirror list, then appends the built-in
+        /// endpoints. Duplicates are dropped so a mirror that mirrors the GitHub copy is
+        /// not queried twice.
+        /// </summary>
+        private static string[] BuildSources()
+        {
+            List<string> sources = [];
+            foreach (string mirror in ActiveMirrors)
+            {
+                string prefix = mirror.EndsWith('/') ? mirror : mirror + "/";
+                sources.Add(prefix + ConfigFileName);
+            }
+
+            foreach (string fallback in FallbackSources)
+            {
+                if (!sources.Any(source => string.Equals(source, fallback, StringComparison.OrdinalIgnoreCase)))
+                {
+                    sources.Add(fallback);
+                }
+            }
+
+            return sources.ToArray();
+        }
+
+        /// <summary>
+        /// Rewrites an absolute download URL through the first mirror that can proxy it.
+        /// A mirror entry shaped like
+        /// <c>https://ghfast.top/https://raw.githubusercontent.com/...</c> proxies everything
+        /// below github.com, which is how large installers avoid the throttled direct path.
+        /// Mirrors that are plain hosts are ignored: their layout is unknown and guessing
+        /// one would produce a broken URL. The hash is unaffected, since the bytes are the
+        /// same file.
+        /// </summary>
+        public static string ResolveInstallerUrl(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return "";
+            }
+
+            if (!url.StartsWith("https://github.com/", StringComparison.OrdinalIgnoreCase))
+            {
+                return url;
+            }
+
+            foreach (string mirror in ActiveMirrors)
+            {
+                int marker = mirror.IndexOf("https://", 1, StringComparison.OrdinalIgnoreCase);
+                if (marker <= 0)
+                {
+                    continue;
+                }
+
+                string proxy = mirror[..marker];
+                return proxy.EndsWith('/') ? proxy + url : proxy + "/" + url;
+            }
+
+            return url;
+        }
+
         private static async Task<ToolboxConfig?> FetchAsync(CancellationToken ct)
         {
-            foreach (string source in Sources)
+            foreach (string source in BuildSources())
             {
                 try
                 {
@@ -200,6 +334,61 @@ namespace UniGetUI.PackageEngine.Toolbox
             catch (Exception e)
             {
                 Logger.Warn($"Toolbox cloud config cache could not be written: {e.Message}");
+            }
+        }
+
+        /// <summary>Notices the user already closed, so one push is not shown twice.</summary>
+        private static HashSet<string> Dismissed
+        {
+            get
+            {
+                if (_dismissed is not null)
+                {
+                    return _dismissed;
+                }
+
+                try
+                {
+                    if (File.Exists(DismissedFile))
+                    {
+                        string[]? ids = JsonSerializer.Deserialize<string[]>(File.ReadAllText(DismissedFile));
+                        _dismissed = new HashSet<string>(ids ?? [], StringComparer.OrdinalIgnoreCase);
+                        return _dismissed;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger.Warn($"Notice history could not be read: {e.Message}");
+                }
+
+                _dismissed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                return _dismissed;
+            }
+        }
+
+        public static bool IsNoticeDismissed(string? id)
+        {
+            return !string.IsNullOrWhiteSpace(id) && Dismissed.Contains(id);
+        }
+
+        public static void DismissNotice(string? id)
+        {
+            if (string.IsNullOrWhiteSpace(id) || !Dismissed.Add(id))
+            {
+                return;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(DataDirectory);
+                File.WriteAllText(
+                    DismissedFile,
+                    JsonSerializer.Serialize(Dismissed.ToArray()),
+                    System.Text.Encoding.UTF8);
+            }
+            catch (Exception e)
+            {
+                Logger.Warn($"Notice history could not be written: {e.Message}");
             }
         }
     }

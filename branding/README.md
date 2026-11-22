@@ -29,9 +29,19 @@
 
 `https://gitee.com/kjllin/kjllin-toolbox-bucket/raw/main/toolbox-config.json`
 
-`ToolboxCloudConfig` 依次尝试 Gitee raw → `ghfast.top` → GitHub raw，成功后写 `%LOCALAPPDATA%\KJLLin Toolbox\cloud-config.json`，6 小时内不再重复请求；全部失败时用缓存，缓存也没有才用内置默认值。
+`ToolboxCloudConfig` 按 `mirrors` 顺序拼出配置地址（默认 Gitee raw → `ghfast.top` → GitHub raw），成功后写 `%LOCALAPPDATA%\KJLLin Toolbox\cloud-config.json`，之后按 `refreshHours`（默认 6 小时，限 1–168）刷新；全部失败时用缓存，缓存也没有才用内置默认值。
 
-字段：`curated`（精选 ID）、`mirrors`（镜像顺序）、`shortcuts`（是否建快捷方式）、`announcement`（公告）、`ownedApps[]`（自有应用清单）。
+| 字段 | 作用 |
+|---|---|
+| `curated` | 精选 ID，数组顺序即浏览顺序 |
+| `blockedIds` | 拉黑：浏览和搜索都不再出现，优先于 `curated` |
+| `searchScope` | `curated` 只搜精选，`all` 搜整个源 |
+| `mirrors` | 下载前缀顺序：拉配置 + 把 GitHub 安装包地址改写成加速前缀 |
+| `refreshHours` | 刷新间隔 |
+| `shortcuts` / `desktopShortcuts` | 开始菜单 / 桌面快捷方式开关 |
+| `notice` | 主窗口横幅，`id` 关掉后本机不再弹 |
+| `announcement` | 旧版纯文本公告（`notice` 优先） |
+| `ownedApps[]` | 自有应用清单 |
 
 ## 自有应用
 

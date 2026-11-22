@@ -100,7 +100,7 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
 
                     if (state.ContainsKey(app.Key))
                     {
-                        StartMenuShortcuts.Ensure(app, config.Shortcuts);
+                        StartMenuShortcuts.Ensure(app, config.Shortcuts, config.DesktopShortcuts);
                     }
                 }
 
@@ -129,7 +129,7 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
                 Dictionary<string, string> state = ReadState();
                 state[app.Key] = app.Version ?? "";
                 WriteState(state);
-                StartMenuShortcuts.Ensure(app, config.Shortcuts);
+                StartMenuShortcuts.Ensure(app, config.Shortcuts, config.DesktopShortcuts);
             }
 
             return ok;
