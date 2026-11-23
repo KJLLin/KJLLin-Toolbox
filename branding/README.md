@@ -36,6 +36,8 @@
 | `curated` | 精选 ID，数组顺序即浏览顺序 |
 | `blockedIds` | 拉黑：浏览和搜索都不再出现，优先于 `curated` |
 | `searchScope` | `curated` 只搜精选，`all` 搜整个源 |
+| `updatesScope` | `store` 更新页只列精选+自有，`all` 全部 |
+| `installedScope` | `all` 全量（默认），`store` 只列精选+自有 |
 | `mirrors` | 下载前缀顺序：拉配置 + 把 GitHub 安装包地址改写成加速前缀 |
 | `refreshHours` | 刷新间隔 |
 | `shortcuts` / `desktopShortcuts` | 开始菜单 / 桌面快捷方式开关 |

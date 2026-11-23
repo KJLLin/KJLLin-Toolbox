@@ -67,6 +67,12 @@ namespace UniGetUI.PackageEngine.Toolbox
         /// <summary><c>curated</c> keeps free-text search inside the catalogue, <c>all</c> searches the whole source.</summary>
         public string SearchScope { get; set; } = "curated";
 
+        /// <summary><c>store</c> keeps the updates page to the catalogue, <c>all</c> shows every winget update.</summary>
+        public string UpdatesScope { get; set; } = "store";
+
+        /// <summary><c>store</c> keeps the installed page to the catalogue, <c>all</c> (the default) shows every package so anything can still be uninstalled.</summary>
+        public string InstalledScope { get; set; } = "all";
+
         /// <summary>Prefixes used for config and installer downloads, in order. An entry may proxy an absolute URL.</summary>
         public string[] Mirrors { get; set; } = [];
 

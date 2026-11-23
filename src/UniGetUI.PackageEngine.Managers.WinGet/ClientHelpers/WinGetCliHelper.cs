@@ -83,12 +83,18 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
         p.WaitForExit();
         logger.Close(p.ExitCode);
 
-        // The updates page is part of the store, not a mirror of the machine: it lists the
-        // curated catalogue plus Toolbox's own apps and nothing else. Anything installed
-        // from outside that scope stays invisible here on purpose.
-        Packages.RemoveAll(package =>
-            !CuratedWinGet.Contains(package.Id)
-            && WinGetLocalManifest.FindOwned(package.Id) is null);
+        // The updates page is part of the store, not a mirror of the machine: by default it
+        // lists the curated catalogue plus Toolbox's own apps and nothing else. The cloud
+        // can widen this to every winget update with updatesScope: "all".
+        ToolboxConfig? scope = ToolboxCloudConfig.TryGetCurrent();
+        if (scope is null
+            || !string.Equals(scope.UpdatesScope, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            Packages.RemoveAll(package =>
+                !CuratedWinGet.Contains(package.Id)
+                && WinGetLocalManifest.FindOwned(package.Id) is null);
+        }
+
         Packages.AddRange(GetToolboxOwnedUpgrades());
 
         return Packages;
@@ -275,6 +281,18 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
                     Logger.Error(e);
                 }
             }
+        }
+
+        // The installed page is a mirror of the machine unless the cloud narrows it:
+        // installedScope: "store" hides anything outside the catalogue, which also hides
+        // its uninstall entry, so the default stays "all".
+        ToolboxConfig? installedScope = ToolboxCloudConfig.TryGetCurrent();
+        if (installedScope is not null
+            && string.Equals(installedScope.InstalledScope, "store", StringComparison.OrdinalIgnoreCase))
+        {
+            packages.RemoveAll(package =>
+                !CuratedWinGet.Contains(package.Id)
+                && WinGetLocalManifest.FindOwned(package.Id) is null);
         }
 
         return packages;
