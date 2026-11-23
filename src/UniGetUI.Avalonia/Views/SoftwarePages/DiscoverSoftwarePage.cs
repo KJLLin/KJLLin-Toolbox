@@ -20,6 +20,7 @@ using UniGetUI.PackageEngine.Enums;
 using UniGetUI.PackageEngine.Interfaces;
 using UniGetUI.PackageEngine.PackageClasses;
 using UniGetUI.PackageEngine.PackageLoader;
+using UniGetUI.PackageEngine.Toolbox;
 
 namespace UniGetUI.Avalonia.Views.Pages;
 
@@ -52,9 +53,38 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
         NoPackages_SubtitleText_Base = CoreTools.Translate("No packages were found"),
         MainSubtitle_StillLoading = CoreTools.Translate("Loading packages"),
         NoMatches_BackgroundText = CoreTools.Translate("No results were found matching the input criteria"),
-    }, vm => AddCatalogToolbar(vm, catalogEditor))
+    }, vm =>
+    {
+        AddSectionToolbar(vm);
+        AddCatalogToolbar(vm, catalogEditor);
+    })
     {
         _catalogEditor = catalogEditor;
+    }
+
+    /// <summary>
+    /// Homepage sections come from the cloud config. Each one becomes a toolbar button that
+    /// narrows the visible list to that group; "All" restores the full catalogue.
+    /// </summary>
+    private static void AddSectionToolbar(PackagesPageViewModel vm)
+    {
+        ToolboxConfig? config = ToolboxCloudConfig.TryGetCurrent();
+        if (config?.Sections is not { Length: > 0 } sections)
+        {
+            return;
+        }
+
+        vm.AddToolbarButton(
+            "catalog_add",
+            CoreTools.Translate("All"),
+            () => vm.ApplySectionFilter(null));
+
+        foreach (ToolboxSectionConfig section in sections)
+        {
+            string title = string.IsNullOrWhiteSpace(section.Title) ? section.Key : section.Title;
+            string[] ids = section.Ids;
+            vm.AddToolbarButton("catalog_add", title, () => vm.ApplySectionFilter(ids));
+        }
     }
 
     private readonly CatalogEditorViewModel? _catalogEditor;

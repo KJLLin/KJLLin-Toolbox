@@ -329,7 +329,9 @@
                         <MenuItem Header="{t:Translate Release notes}" Command="{Binding RequestNavigationCommand}" CommandParameter="ReleaseNotes">
                             <MenuItem.Icon><controls:SvgIcon Path="avares://UniGetUI/Assets/Symbols/megaphone.svg" Width="16" Height="16"/></MenuItem.Icon>
                         </MenuItem>
+                        <!-- Toolbox hides the self-update entry; the command and updater stay wired. -->
                         <MenuItem Command="{Binding CheckForUpdatesCommand}"
+                                  IsVisible="False"
                                   automation:AutomationProperties.Name="{Binding CheckForUpdatesLabel}">
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal" Spacing="8">

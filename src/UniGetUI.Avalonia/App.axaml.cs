@@ -263,6 +263,15 @@ public partial class App : Application
 
     private static async Task StartupAsync(MainWindow mainWindow, string[] args)
     {
+        // Toolbox policy: telemetry is off and the client never updates itself. The updater
+        // and telemetry stacks stay in the build untouched, so deleting this block is all it
+        // takes to restore the upstream behaviour.
+        CoreSettings.Set(CoreSettings.K.DisableTelemetry, true);
+        CoreSettings.Set(CoreSettings.K.ShownTelemetryBanner, true);
+        CoreSettings.Set(CoreSettings.K.DisableAutoUpdateWingetUI, true);
+        CoreSettings.Set(CoreSettings.K.DisableAutoCheckforUpdates, true);
+        CoreSettings.Set(CoreSettings.K.InstallUniGetUIUpdatesWhenIdle, false);
+
         _ = UninstallRequestHandler.HandleAsync(mainWindow, args);
         // Cloud-managed catalogue and self-hosted apps. Both run in the background:
         // a slow or unreachable mirror must never delay the window.

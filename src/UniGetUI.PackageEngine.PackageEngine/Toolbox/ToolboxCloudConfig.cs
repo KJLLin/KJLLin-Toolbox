@@ -48,6 +48,19 @@ namespace UniGetUI.PackageEngine.Toolbox
     }
 
     /// <summary>
+    /// One group of the homepage. Sections are presentation only: they never change what
+    /// can be installed, they just decide which part of the catalogue the user is looking
+    /// at.
+    /// </summary>
+    public sealed class ToolboxSectionConfig
+    {
+        public string Key { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string[] Ids { get; set; } = [];
+    }
+
+    /// <summary>
     /// The cloud side of Toolbox: the curated catalogue, the mirror order, the client
     /// behaviour switches and the self-hosted applications are all server-controlled.
     /// Clients cache the last good copy and refresh every few hours, so a config push
@@ -86,6 +99,7 @@ namespace UniGetUI.PackageEngine.Toolbox
         public string Announcement { get; set; } = "";
 
         public ToolboxNoticeConfig? Notice { get; set; }
+        public ToolboxSectionConfig[] Sections { get; set; } = [];
         public ToolboxOwnedAppConfig[] OwnedApps { get; set; } = [];
     }
 

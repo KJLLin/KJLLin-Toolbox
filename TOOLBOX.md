@@ -28,6 +28,7 @@
 | `curated` | 精选 winget 包 ID 列表，覆盖客户端内置的 14 项，数组顺序即浏览顺序 |
 | `blockedIds` | 从浏览和搜索中拉黑的 ID，优先级高于 `curated` |
 | `searchScope` | `curated` 时搜索只命中精选，`all` 时搜索覆盖整个源（浏览始终只列精选） |
+| `sections[]` | 首页分区：`key` / `title` / `description` / `ids`，每区在首页变成一个筛选按钮 |
 | `updatesScope` | `store`（默认）时更新页只列精选与自有应用，`all` 时显示全部 winget 更新 |
 | `installedScope` | `all`（默认）保留机器上所有包（否则卸载入口消失），`store` 只列精选与自有应用 |
 | `mirrors` | 下载前缀顺序：既用于拉配置本身，也用于把 GitHub 的安装包地址改写成加速前缀 |
@@ -43,6 +44,10 @@
 自有应用在 winget 社区源里查不到，因此它们由客户端从云端配置注入：浏览时排在最前，搜索时按 `key` / 显示名 / 标识符 / 别名匹配。安装走 `winget install --manifest <本地目录>`（manifest 在 `%LOCALAPPDATA%\KJLLin Toolbox\manifests\` 现写），`LocalManifestFiles` 只在首次安装时向用户要一次提权，成功后写 `localmanifest-policy.ok`，之后不再弹 UAC。
 
 更新页默认与搜索一样只认精选和自有应用（`updatesScope` 改 `all` 可放开）：`winget upgrade` 的结果会先被过滤到这两个集合，自有应用的待更新项由云端版本与本地记录的版本比对后补上。装在其他来源的软件不会出现在更新页（仍可在“已安装”页查看和卸载）。
+
+## 已关闭的上游功能
+
+遥测与客户端的自动更新在 Toolbox 里被禁用且隐藏：启动时强制写入 `DisableTelemetry`、`ShownTelemetryBanner`、`DisableAutoUpdateWingetUI`、`DisableAutoCheckforUpdates`、`InstallUniGetUIUpdatesWhenIdle`，设置页对应卡片与侧栏「检查更新」入口设 `IsVisible="False"`。相关代码（`AvaloniaAutoUpdater`、遥测管线、对话框）都留在构建里，删掉 `App.axaml.cs` 里那段策略和两处 `IsVisible` 即可恢复原行为。
 
 ## 自有源仓库
 

@@ -732,6 +732,37 @@ public partial class PackagesPageViewModel : ViewModelBase
         if (!MegaQueryBoxEnabled) FilterPackages();
     }
 
+    private List<PackageWrapper>? _sectionSnapshot;
+
+    /// <summary>
+    /// Narrows the homepage to one cloud-defined section. The full list is snapshotted on
+    /// first use, so clearing the section restores it without another reload.
+    /// </summary>
+    public void ApplySectionFilter(IReadOnlyList<string>? ids)
+    {
+        _sectionSnapshot ??= FilteredPackages.ToList();
+
+        FilteredPackages.Clear();
+        if (ids is { Count: > 0 } sections)
+        {
+            HashSet<string> keep = new(sections, StringComparer.OrdinalIgnoreCase);
+            foreach (PackageWrapper wrapper in _sectionSnapshot)
+            {
+                if (keep.Contains(wrapper.Package.Id))
+                {
+                    FilteredPackages.Add(wrapper);
+                }
+            }
+        }
+        else
+        {
+            foreach (PackageWrapper wrapper in _sectionSnapshot)
+            {
+                FilteredPackages.Add(wrapper);
+            }
+        }
+    }
+
     [RelayCommand]
     public void SubmitSearch()
     {
@@ -757,6 +788,9 @@ public partial class PackagesPageViewModel : ViewModelBase
 
     public void FilterPackages()
     {
+        // Any rebuild invalidates the snapshot taken for a homepage section.
+        _sectionSnapshot = null;
+
         var filter = BuildPackageFilter(out string query);
         var results = FilteredPackages.ApplyToList(_wrappedPackages.Where(filter)).ToList();
 

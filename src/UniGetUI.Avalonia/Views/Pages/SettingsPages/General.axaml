@@ -22,44 +22,44 @@
             <settings:ComboboxCard x:Name="LanguageSelector"
                                    CornerRadius="8"/>
 
-            <settings:TranslatedTextBlock Text="UniGetUI updater"
+            <settings:TranslatedTextBlock Text="UniGetUI updater" IsVisible="False"
                                           FontSize="14"
                                           FontWeight="SemiBold"
                                           Margin="44,32,4,8"
                                           automation:AutomationProperties.HeadingLevel="2"/>
 
-            <settings:CheckboxButtonCard x:Name="GeneralUpdaterCard"
+            <settings:CheckboxButtonCard x:Name="GeneralUpdaterCard" IsVisible="False"
                                          SettingName="DisableAutoUpdateWingetUI"
                                          CheckboxText="{t:Translate Update UniGetUI automatically}"
                                          ButtonText="{t:Translate Check for updates}"
                                          ButtonAlwaysOn="True"
                                          CornerRadius="8,8,0,0"/>
 
-            <settings:CheckboxCard x:Name="InstallUpdatesWhenIdleCard"
+            <settings:CheckboxCard x:Name="InstallUpdatesWhenIdleCard" IsVisible="False"
                                    SettingName="InstallUniGetUIUpdatesWhenIdle"
                                    Text="{t:Translate Install UniGetUI updates automatically while it is idle in the background}"
                                    CornerRadius="0"
                                    BorderThickness="1,0,1,1"/>
 
-            <settings:CheckboxCard x:Name="EnableUniGetUIBetaCard"
+            <settings:CheckboxCard x:Name="EnableUniGetUIBetaCard" IsVisible="False"
                                    SettingName="EnableUniGetUIBeta"
                                    Text="{t:Translate Install prerelease versions of UniGetUI}"
                                    CornerRadius="0"
                                    BorderThickness="1,0,1,1"/>
 
-            <settings:CheckboxCard x:Name="ReleaseNotesOnUpdateCard"
+            <settings:CheckboxCard x:Name="ReleaseNotesOnUpdateCard" IsVisible="False"
                                    SettingName="DisableReleaseNotesOnUpdate"
                                    Text="{t:Translate Show the release notes after UniGetUI is updated}"
                                    CornerRadius="0,0,8,8"
                                    BorderThickness="1,0,1,1"/>
 
-            <settings:TranslatedTextBlock Text="Scoop sources"
+            <settings:TranslatedTextBlock Text="Scoop sources" IsVisible="False"
                                           FontSize="14"
                                           FontWeight="SemiBold"
                                           Margin="44,32,4,8"
                                           automation:AutomationProperties.HeadingLevel="2"/>
 
-            <settings:CheckboxCard x:Name="ShowAllScoopSourcesCard"
+            <settings:CheckboxCard x:Name="ShowAllScoopSourcesCard" IsVisible="False"
                                    SettingName="ScoopShowAllSources"
                                    Text="显示上游 Scoop 源（main、extras 等，非自有源；自有源仍优先）"
                                    CornerRadius="8"/>
@@ -74,13 +74,13 @@
                                    Text="开发人员选项（显示包管理器设置、扩展、实验功能、代理等高级项）"
                                    CornerRadius="8"/>
 
-            <settings:TranslatedTextBlock Text="Telemetry"
+            <settings:TranslatedTextBlock Text="Telemetry" IsVisible="False"
                                           FontSize="14"
                                           FontWeight="SemiBold"
                                           Margin="44,32,4,8"
                                           automation:AutomationProperties.HeadingLevel="2"/>
 
-            <settings:ButtonCard x:Name="GeneralTelemetryCard"
+            <settings:ButtonCard x:Name="GeneralTelemetryCard" IsVisible="False"
                                  CornerRadius="8"
                                  Text="{t:Translate Manage telemetry settings}"
                                  ButtonText="{t:Translate Manage}"
