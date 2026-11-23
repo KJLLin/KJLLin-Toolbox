@@ -10,6 +10,7 @@ using UniGetUI.PackageEngine.Classes.Manager.BaseProviders;
 using UniGetUI.PackageEngine.Enums;
 using UniGetUI.PackageEngine.Interfaces;
 using UniGetUI.PackageEngine.PackageClasses;
+using UniGetUI.PackageEngine.Toolbox;
 using Architecture = UniGetUI.PackageEngine.Enums.Architecture;
 using InstallOptions = UniGetUI.PackageEngine.Serializable.InstallOptions;
 
@@ -133,6 +134,31 @@ internal sealed class WinGetPkgOperationHelper : BasePkgOperationHelper
         bool standalone
     )
     {
+        // Toolbox's own apps are not in the winget community source: their manifest is
+        // written locally from the cloud config, so the source selector is replaced by
+        // the manifest path. The policy check is cached, so only the first install
+        // raises a UAC prompt.
+        if (operation is OperationType.Install or OperationType.Update
+            && WinGetLocalManifest.TryWriteManifestFor(package.Id) is { } manifestDirectory)
+        {
+            if (!WinGetLocalManifest.EnsureLocalManifestPolicy())
+            {
+                Logger.Warn(
+                    $"LocalManifestFiles is still disabled, the install of {package.Id} will likely fail");
+            }
+
+            return new[]
+            {
+                "install",
+                "--manifest",
+                manifestDirectory,
+                "--accept-package-agreements",
+                "--accept-source-agreements",
+                "--silent",
+                "--disable-interactivity",
+            };
+        }
+
         // Pinget 0.4.x does not accept --accept-source-agreements, --disable-interactivity,
         // or --proxy on any verb; --accept-package-agreements, --force, --location, and
         // --interactive are accepted on install/uninstall but rejected on upgrade.

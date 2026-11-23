@@ -148,6 +148,22 @@ namespace UniGetUI.PackageEngine.Toolbox
 
         public static ToolboxConfig? Current => _current;
 
+        /// <summary>
+        /// Synchronous snapshot for call paths that cannot await (command-line building,
+        /// for instance). Never hits the network: it uses the in-memory copy, then the
+        /// cache, and otherwise returns null.
+        /// </summary>
+        public static ToolboxConfig? TryGetCurrent()
+        {
+            if (_current is not null)
+            {
+                return _current;
+            }
+
+            _current = ReadCache();
+            return _current;
+        }
+
         /// <summary>The mirror list actually in force: the cloud one when present, else the built-in list.</summary>
         public static string[] ActiveMirrors
         {

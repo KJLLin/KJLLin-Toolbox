@@ -10,6 +10,7 @@ using UniGetUI.PackageEngine.Enums;
 using UniGetUI.PackageEngine.Interfaces;
 using UniGetUI.PackageEngine.ManagerClasses.Classes;
 using UniGetUI.PackageEngine.PackageClasses;
+using UniGetUI.PackageEngine.Toolbox;
 
 namespace UniGetUI.PackageEngine.Managers.WingetManager;
 
@@ -289,6 +290,9 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
                     }
                 }
             }
+
+            // Toolbox's own apps come first: they are the reason someone opens this store.
+            curated.InsertRange(0, GetToolboxOwnedPackages());
             return curated;
         }
 
@@ -296,14 +300,70 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
         // installed users look up anything in the source while browsing stays curated.
         if (CuratedWinGet.SearchAll)
         {
-            return SearchPackages(query, null, MAX_SEARCH_RESULTS)
+            List<Package> everything = SearchPackages(query, null, MAX_SEARCH_RESULTS)
                 .Where(package => !CuratedWinGet.IsBlocked(package.Id))
                 .ToList();
+            everything.AddRange(GetToolboxOwnedPackages(query));
+            return everything;
         }
 
-        return SearchPackages(query, null, MAX_SEARCH_RESULTS)
+        List<Package> matches = SearchPackages(query, null, MAX_SEARCH_RESULTS)
             .Where(package => CuratedWinGet.Contains(package.Id))
             .ToList();
+        matches.AddRange(GetToolboxOwnedPackages(query));
+        return matches;
+    }
+
+    /// <summary>
+    /// Toolbox-owned apps are published nowhere, so a search of the winget source can
+    /// never find them. They are injected here from the cloud config instead; the install
+    /// path then switches to the locally written manifest (see WinGetLocalManifest).
+    /// </summary>
+    private List<Package> GetToolboxOwnedPackages(string? query = null)
+    {
+        List<Package> packages = [];
+        ToolboxConfig? config = ToolboxCloudConfig.TryGetCurrent();
+        if (config is null)
+        {
+            return packages;
+        }
+
+        foreach (ToolboxOwnedAppConfig app in config.OwnedApps)
+        {
+            if (string.IsNullOrWhiteSpace(app.Identifier) || !WinGetLocalManifest.HasCompleteMetadata(app))
+            {
+                continue;
+            }
+
+            if (query is { Length: > 0 } && !MatchesOwnedApp(app, query))
+            {
+                continue;
+            }
+
+            packages.Add(new Package(
+                app.DisplayName ?? app.Key,
+                app.Identifier!,
+                app.Version ?? "Unknown",
+                Manager.DefaultSource,
+                Manager));
+        }
+
+        return packages;
+    }
+
+    private static bool MatchesOwnedApp(ToolboxOwnedAppConfig app, string query)
+    {
+        string?[] candidates = [app.Key, app.DisplayName, app.Identifier, app.CommandAlias];
+        foreach (string? candidate in candidates)
+        {
+            if (!string.IsNullOrWhiteSpace(candidate)
+                && candidate.Contains(query, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private List<IManagerSource> GetSourcesForBrowse()
