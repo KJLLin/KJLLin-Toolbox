@@ -40,6 +40,8 @@
 
 自有应用在 winget 社区源里查不到，因此它们由客户端从云端配置注入：浏览时排在最前，搜索时按 `key` / 显示名 / 标识符 / 别名匹配。安装走 `winget install --manifest <本地目录>`（manifest 在 `%LOCALAPPDATA%\KJLLin Toolbox\manifests\` 现写），`LocalManifestFiles` 只在首次安装时向用户要一次提权，成功后写 `localmanifest-policy.ok`，之后不再弹 UAC。
 
+更新页与搜索一样只认精选和自有应用：`winget upgrade` 的结果会先被过滤到这两个集合，自有应用的待更新项由云端版本与本地记录的版本比对后补上。装在其他来源的软件不会出现在更新页（仍可在“已安装”页查看和卸载）。
+
 ## 自有源仓库
 
 | 源 | 仓库 | 用途 |

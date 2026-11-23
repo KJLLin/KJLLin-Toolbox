@@ -88,6 +88,57 @@ namespace UniGetUI.PackageEngine.Toolbox
                 && !string.IsNullOrWhiteSpace(app.Sha256);
         }
 
+        private static string StateFilePath => Path.Join(
+            ToolboxCloudConfig.DataDirectory,
+            "owned-apps.json");
+
+        /// <summary>Versions the client itself recorded after a successful install.</summary>
+        public static Dictionary<string, string> ReadInstalledVersions()
+        {
+            try
+            {
+                if (!File.Exists(StateFilePath))
+                {
+                    return [];
+                }
+
+                return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+                    File.ReadAllText(StateFilePath)) ?? [];
+            }
+            catch (Exception e)
+            {
+                Logger.Warn($"Owned app state could not be read: {e.Message}");
+                return [];
+            }
+        }
+
+        /// <summary>Numeric-aware comparison that tolerates strings like 3.16.SNAPSHOT.</summary>
+        public static int CompareVersions(string left, string right)
+        {
+            string[] leftParts = left.Split('.', '-');
+            string[] rightParts = right.Split('.', '-');
+            int length = Math.Max(leftParts.Length, rightParts.Length);
+            for (int i = 0; i < length; i++)
+            {
+                string leftPart = i < leftParts.Length ? leftParts[i] : "0";
+                string rightPart = i < rightParts.Length ? rightParts[i] : "0";
+
+                bool leftIsNumber = int.TryParse(leftPart, out int leftNumber);
+                bool rightIsNumber = int.TryParse(rightPart, out int rightNumber);
+
+                int comparison = leftIsNumber && rightIsNumber
+                    ? leftNumber.CompareTo(rightNumber)
+                    : string.Compare(leftPart, rightPart, StringComparison.OrdinalIgnoreCase);
+
+                if (comparison != 0)
+                {
+                    return comparison;
+                }
+            }
+
+            return 0;
+        }
+
         /// <summary>
         /// Enables <c>LocalManifestFiles</c> once, remembering that it was done so later
         /// installs do not show a UAC prompt again. Returns false when the user declines.

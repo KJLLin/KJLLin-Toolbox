@@ -83,6 +83,14 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
         p.WaitForExit();
         logger.Close(p.ExitCode);
 
+        // The updates page is part of the store, not a mirror of the machine: it lists the
+        // curated catalogue plus Toolbox's own apps and nothing else. Anything installed
+        // from outside that scope stays invisible here on purpose.
+        Packages.RemoveAll(package =>
+            !CuratedWinGet.Contains(package.Id)
+            && WinGetLocalManifest.FindOwned(package.Id) is null);
+        Packages.AddRange(GetToolboxOwnedUpgrades());
+
         return Packages;
     }
 
@@ -344,6 +352,51 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
                 app.DisplayName ?? app.Key,
                 app.Identifier!,
                 app.Version ?? "Unknown",
+                Manager.DefaultSource,
+                Manager));
+        }
+
+        return packages;
+    }
+
+    /// <summary>
+    /// Own apps never show up in <c>winget upgrade</c>: winget only knows the version it
+    /// installed from the manifest. The pending update is derived from the cloud version
+    /// against the version this client recorded after its own install.
+    /// </summary>
+    private List<Package> GetToolboxOwnedUpgrades()
+    {
+        List<Package> packages = [];
+        ToolboxConfig? config = ToolboxCloudConfig.TryGetCurrent();
+        if (config is null)
+        {
+            return packages;
+        }
+
+        Dictionary<string, string> installed = WinGetLocalManifest.ReadInstalledVersions();
+        foreach (ToolboxOwnedAppConfig app in config.OwnedApps)
+        {
+            if (!WinGetLocalManifest.HasCompleteMetadata(app))
+            {
+                continue;
+            }
+
+            if (!installed.TryGetValue(app.Key, out string current)
+                || string.IsNullOrWhiteSpace(current))
+            {
+                continue;
+            }
+
+            if (WinGetLocalManifest.CompareVersions(app.Version!, current) <= 0)
+            {
+                continue;
+            }
+
+            packages.Add(new Package(
+                app.DisplayName ?? app.Key,
+                app.Identifier!,
+                current,
+                app.Version!,
                 Manager.DefaultSource,
                 Manager));
         }
