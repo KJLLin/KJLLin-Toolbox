@@ -57,6 +57,8 @@ namespace UniGetUI.PackageEngine.Toolbox
         public string Key { get; set; } = "";
         public string Title { get; set; } = "";
         public string Description { get; set; } = "";
+        /// <summary>Symbol name under Assets/Symbols; falls back to a per-key default.</summary>
+        public string? Icon { get; set; }
         public string[] Ids { get; set; } = [];
     }
 

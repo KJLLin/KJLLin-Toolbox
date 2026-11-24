@@ -399,7 +399,7 @@ public partial class PackagesPageViewModel : ViewModelBase
     /// <summary>Set once the cloud-driven section buttons have been added to this page.</summary>
     internal bool SectionToolbarApplied { get; set; }
 
-    public Button AddToolbarButton(string svgName, string label, Action onClick, bool showLabel = true, int index = -1)
+    public Button AddToolbarButton(string svgName, string label, Action onClick, bool showLabel = true, int index = -1, bool alwaysShowLabel = false)
     {
         var icon = new SvgIcon
         {
@@ -418,10 +418,12 @@ public partial class PackagesPageViewModel : ViewModelBase
                 Text = label,
                 FontSize = 12,
                 VerticalAlignment = VerticalAlignment.Center,
-                IsVisible = !_toolbarLabelsCollapsed,
+                IsVisible = alwaysShowLabel || !_toolbarLabelsCollapsed,
             };
             content.Children.Add(labelBlock);
-            _collapsibleToolbarLabels.Add(labelBlock);
+            // Section buttons keep their caption visible: five identical icons would be
+            // impossible to tell apart once the labels collapse.
+            if (!alwaysShowLabel) _collapsibleToolbarLabels.Add(labelBlock);
         }
 
         var btn = new Button

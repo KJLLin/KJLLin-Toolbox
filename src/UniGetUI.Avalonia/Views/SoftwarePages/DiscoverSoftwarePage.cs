@@ -63,13 +63,9 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
     }
 
     /// <summary>
-    /// Homepage sections come from the cloud config. Each one becomes a toolbar button that
-    /// narrows the visible list to that group; "All" restores the full catalogue.
-    /// </summary>
-
-    /// <summary>
-    /// The cloud config normally arrives after this page is built, so the section buttons
-    /// are injected later from the startup task instead of only here.
+    /// Homepage sections come from the cloud config: one toolbar button per section, plus
+    /// "All". The config normally arrives after the page is built, so they are also injected
+    /// later from the startup task (see <see cref="ApplyCloudSections"/>).
     /// </summary>
     internal void ApplyCloudSections()
     {
@@ -97,20 +93,35 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
         vm.SectionToolbarApplied = true;
 
         vm.AddToolbarButton(
-            "catalog_add",
+            "catalog",
             CoreTools.Translate("All"),
             () => vm.ApplySectionFilter(null),
-            index: 1);
+            index: 1,
+            alwaysShowLabel: true);
 
         int slot = 2;
         foreach (ToolboxSectionConfig section in sections)
         {
             string title = string.IsNullOrWhiteSpace(section.Title) ? section.Key : section.Title;
+            string icon = string.IsNullOrWhiteSpace(section.Icon)
+                ? DefaultSectionIcon(section.Key)
+                : section.Icon;
             string[] ids = section.Ids;
-            vm.AddToolbarButton("catalog_add", title, () => vm.ApplySectionFilter(ids), index: slot);
+            vm.AddToolbarButton(icon, title, () => vm.ApplySectionFilter(ids),
+                index: slot, alwaysShowLabel: true);
             slot++;
         }
     }
+
+    /// <summary>Readable fallback so sections stay distinct even without a cloud icon.</summary>
+    private static string DefaultSectionIcon(string key) => key.ToLowerInvariant() switch
+    {
+        "essentials" => "package",
+        "dev" => "console",
+        "read-media" => "collections_add",
+        "web-game" => "steam",
+        _ => "catalog_add",
+    };
 
     private readonly CatalogEditorViewModel? _catalogEditor;
 
