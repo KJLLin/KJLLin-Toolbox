@@ -1,0 +1,117 @@
+name: kjllin-toolbox-screenshot
+
+# Boots the shipped client on the Windows runner and captures what a user sees,
+# so the UI (sections toolbar, notice banner, branding) can be reviewed without
+# a local Windows box.
+on:
+  workflow_dispatch:
+  push:
+    branches: [polaris]
+    paths:
+      - ".github/workflows/kjllin-toolbox-screenshot.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download the rolling nightly build
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "toolbox.zip"
+          $dir = Join-Path $env:RUNNER_TEMP "toolbox"
+          Invoke-WebRequest -Uri "https://github.com/KJLLin/KJLLin-Toolbox/releases/download/nightly/KJLLin.Toolbox.x64.zip" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          Get-Item (Join-Path $dir "UniGetUI.exe") | Select-Object Name, Length
+
+      - name: Describe the session
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms
+          "session: $((Get-Process -Id $PID).SessionId)"
+          "screens: $(([System.Windows.Forms.Screen]::AllScreens | ForEach-Object { "$($_.DeviceName) $($_.Bounds.Width)x$($_.Bounds.Height)" }) -join ', ')"
+          "dpi scale: $([System.Windows.Forms.SystemInformation]::PrimaryMonitorSize)"
+
+      - name: Run the client
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:RUNNER_TEMP "toolbox\UniGetUI.exe"
+          $proc = Start-Process -FilePath $exe -PassThru
+          "started pid $($proc.Id)"
+
+          $handle = 0
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 2
+            $live = Get-Process UniGetUI -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($live -and $live.MainWindowHandle -ne 0) {
+              $handle = $live.MainWindowHandle
+              "window ready after $(( $i + 1 ) * 2)s: title='$($live.MainWindowTitle)' handle=$handle"
+              break
+            }
+          }
+          if ($handle -eq 0) { "no window after 120s, capturing the desktop anyway" }
+          Start-Sleep -Seconds 25
+
+      - name: Capture screenshots
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP "shots"
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+
+          function Save-Bitmap($bitmap, $path) {
+            $bitmap.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+            $bitmap.Dispose()
+            $item = Get-Item $path
+            "saved $($item.Name) $($item.Length) bytes"
+          }
+
+          # 1. whole screen
+          $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $full = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
+          $graphics = [System.Drawing.Graphics]::FromImage($full)
+          $graphics.CopyFromScreen($screen.Location, [System.Drawing.Point]::Empty, $screen.Size)
+          $graphics.Dispose()
+          Save-Bitmap $full (Join-Path $out "01-desktop.png")
+
+          # 2. the client window itself, cropped so it is readable
+          Add-Type -Language CSharp -TypeDefinition 'using System; using System.Runtime.InteropServices; public struct RECT { public int Left, Top, Right, Bottom; } public class Win { [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c); }'
+          $live = Get-Process UniGetUI -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($live -and $live.MainWindowHandle -ne 0) {
+            [Win]::ShowWindow($live.MainWindowHandle, 9) | Out-Null   # SW_RESTORE
+            [Win]::SetForegroundWindow($live.MainWindowHandle) | Out-Null
+            Start-Sleep -Seconds 3
+
+            $rect = New-Object RECT
+            [Win]::GetWindowRect($live.MainWindowHandle, [ref]$rect) | Out-Null
+            $width = $rect.Right - $rect.Left
+            $height = $rect.Bottom - $rect.Top
+            "window rect: $($rect.Left),$($rect.Top) ${width}x${height}"
+            if ($width -gt 0 -and $height -gt 0) {
+              $window = New-Object System.Drawing.Bitmap $width, $height
+              $graphics = [System.Drawing.Graphics]::FromImage($window)
+              $graphics.CopyFromScreen($rect.Left, $rect.Top, 0, 0, (New-Object System.Drawing.Size $width, $height))
+              $graphics.Dispose()
+              Save-Bitmap $window (Join-Path $out "02-client.png")
+            }
+          } else { "window gone before the crop" }
+
+          # 3. anything the client logged, for the record
+          Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "*.log" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -like "*UniGetUI*" -or $_.FullName -like "*KJLLin*" } |
+            ForEach-Object { Copy-Item $_.FullName (Join-Path $out $_.Name) -Force }
+
+          Get-Process UniGetUI -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolbox-screenshots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: warn
