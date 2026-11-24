@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,8 +28,18 @@ namespace UniGetUI.PackageEngine.Toolbox
     {
         private const string ManifestVersion = "1.6.0";
         private const string PolicyMarkerFileName = "localmanifest-policy.ok";
-        private const string InstallArguments =
-            "--manifest \"{0}\" --accept-package-agreements --accept-source-agreements --silent --disable-interactivity";
+        private const string CommonInstallSwitches =
+            "--accept-package-agreements --accept-source-agreements --silent --disable-interactivity";
+
+        // winget 1.4-1.10 accept "--manifest", the newer CLI only registers the short form.
+        // Both are tried before falling back to the pinned download.
+        private const string InstallArgumentsLong = "--manifest \"{0}\" " + CommonInstallSwitches;
+        private const string InstallArgumentsShort = "-m \"{0}\" " + CommonInstallSwitches;
+
+        private static readonly HttpClient DownloadClient = new()
+        {
+            Timeout = TimeSpan.FromMinutes(10),
+        };
 
         private static readonly object PolicyLock = new();
 
@@ -209,20 +221,73 @@ namespace UniGetUI.PackageEngine.Toolbox
                 return false;
             }
 
-            bool installed = await RunInstallAsync(manifestDirectory, ct).ConfigureAwait(false);
+            bool installed = await RunInstallAsync(manifestDirectory, InstallArgumentsShort, ct)
+                .ConfigureAwait(false);
             if (installed)
             {
                 return true;
             }
 
             Logger.Info($"Local manifest install of {app.Key} failed, enabling LocalManifestFiles once");
-            if (!EnsureLocalManifestPolicy())
+            if (EnsureLocalManifestPolicy())
             {
-                Logger.Warn($"LocalManifestFiles was not enabled, {app.Key} stays uninstalled");
-                return false;
+                installed = await RunInstallAsync(manifestDirectory, InstallArgumentsLong, ct)
+                    .ConfigureAwait(false);
+                if (installed)
+                {
+                    return true;
+                }
             }
 
-            return await RunInstallAsync(manifestDirectory, ct).ConfigureAwait(false);
+            Logger.Info($"winget did not accept the local manifest for {app.Key}; "
+                + "using the pinned download in portable layout instead");
+            return await InstallPortableDirectAsync(app, ct).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Portable-layout install used when winget refuses the local manifest.
+        ///
+        /// The download is pinned by the cloud config (URL + sha256), so this keeps the same
+        /// integrity guarantee winget would give, and drops the binary where winget's
+        /// portable installer would put it so the shortcut builder finds it unchanged.
+        /// </summary>
+        private static async Task<bool> InstallPortableDirectAsync(
+            ToolboxOwnedAppConfig app,
+            CancellationToken ct)
+        {
+            try
+            {
+                string url = ResolveInstallerUrl(app.InstallerUrl);
+                string packagesRoot = Path.Join(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft", "WinGet", "Packages");
+                string destinationDirectory = Path.Join(
+                    packagesRoot,
+                    $"{app.Identifier}_{app.Version}");
+                string executableName =
+                    (app.CommandAlias ?? app.ShortcutName ?? app.Key ?? "app") + ".exe";
+                string destination = Path.Join(destinationDirectory, executableName);
+
+                byte[] payload = await DownloadClient.GetByteArrayAsync(url, ct).ConfigureAwait(false);
+
+                string expected = (app.Sha256 ?? "").Trim().ToUpperInvariant();
+                string actual = Convert.ToHexString(SHA256.HashData(payload));
+                if (expected.Length != actual.Length || expected != actual)
+                {
+                    Logger.Warn($"sha256 mismatch for {app.Key}: expected {expected}, got {actual}");
+                    return false;
+                }
+
+                Directory.CreateDirectory(destinationDirectory);
+                await File.WriteAllBytesAsync(destination, payload, ct).ConfigureAwait(false);
+                Logger.Info($"Installed {app.Key} {app.Version} into {destinationDirectory}");
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logger.Warn($"Portable install of {app.Key} failed: {e.Message}");
+                return false;
+            }
         }
 
         private static string ManifestDirectory(ToolboxOwnedAppConfig app) => Path.Join(
@@ -295,9 +360,12 @@ namespace UniGetUI.PackageEngine.Toolbox
             Logger.Info($"Manifest written to {directory}");
         }
 
-        private static async Task<bool> RunInstallAsync(string manifestDirectory, CancellationToken ct)
+        private static async Task<bool> RunInstallAsync(
+            string manifestDirectory,
+            string argumentsTemplate,
+            CancellationToken ct)
         {
-            string arguments = string.Format(InstallArguments, manifestDirectory);
+            string arguments = string.Format(argumentsTemplate, manifestDirectory);
             try
             {
                 using Process process = new()
