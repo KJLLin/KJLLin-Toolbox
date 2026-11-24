@@ -66,17 +66,24 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
     /// Homepage sections come from the cloud config. Each one becomes a toolbar button that
     /// narrows the visible list to that group; "All" restores the full catalogue.
     /// </summary>
-    private bool _sectionToolbarApplied;
 
     /// <summary>
     /// The cloud config normally arrives after this page is built, so the section buttons
     /// are injected later from the startup task instead of only here.
     /// </summary>
-    internal void ApplyCloudSections() => AddSectionToolbar(ViewModel);
-
-    private void AddSectionToolbar(PackagesPageViewModel vm)
+    internal void ApplyCloudSections()
     {
-        if (_sectionToolbarApplied)
+        bool before = ViewModel.SectionToolbarApplied;
+        AddSectionToolbar(ViewModel);
+        if (!before && ViewModel.SectionToolbarApplied)
+        {
+            RebuildToolbar();
+        }
+    }
+
+    private static void AddSectionToolbar(PackagesPageViewModel vm)
+    {
+        if (vm.SectionToolbarApplied)
         {
             return;
         }
@@ -87,18 +94,21 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
             return;
         }
 
-        _sectionToolbarApplied = true;
+        vm.SectionToolbarApplied = true;
 
         vm.AddToolbarButton(
             "catalog_add",
             CoreTools.Translate("All"),
-            () => vm.ApplySectionFilter(null));
+            () => vm.ApplySectionFilter(null),
+            index: 1);
 
+        int slot = 2;
         foreach (ToolboxSectionConfig section in sections)
         {
             string title = string.IsNullOrWhiteSpace(section.Title) ? section.Key : section.Title;
             string[] ids = section.Ids;
-            vm.AddToolbarButton("catalog_add", title, () => vm.ApplySectionFilter(ids));
+            vm.AddToolbarButton("catalog_add", title, () => vm.ApplySectionFilter(ids), index: slot);
+            slot++;
         }
     }
 

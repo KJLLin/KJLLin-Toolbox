@@ -300,6 +300,18 @@ public abstract partial class AbstractPackagesPage : UserControl,
         ToolbarOverflowButton.Flyout = _toolbarOverflowFlyout;
     }
 
+    /// <summary>
+    /// Lays the toolbar out again from <see cref="PackagesPageViewModel.ToolbarEntries"/>.
+    /// Needed when entries are added after the page is built (cloud-driven sections).
+    /// </summary>
+    internal void RebuildToolbar()
+    {
+        ToolBar.Children.Clear();
+        foreach (var entry in ViewModel.ToolbarEntries)
+            ToolBar.Children.Add(entry.Control);
+        ToolBar.Children.Add(ToolbarOverflowButton);
+    }
+
     private void PopulateToolbarOverflowFlyout()
     {
         var items = new List<object>();
