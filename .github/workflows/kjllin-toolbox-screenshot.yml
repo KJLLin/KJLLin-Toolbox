@@ -87,7 +87,7 @@ jobs:
           Add-Type -Language CSharp -TypeDefinition 'using System; using System.Runtime.InteropServices; public struct RECT { public int Left, Top, Right, Bottom; } public class Win { [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c); }'
           $live = Get-Process UniGetUI -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($live -and $live.MainWindowHandle -ne 0) {
-            [Win]::ShowWindow($live.MainWindowHandle, 9) | Out-Null   # SW_RESTORE
+            [Win]::ShowWindow($live.MainWindowHandle, 3) | Out-Null   # SW_MAXIMIZE
             [Win]::SetForegroundWindow($live.MainWindowHandle) | Out-Null
             Start-Sleep -Seconds 3
 
