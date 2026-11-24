@@ -257,7 +257,7 @@ namespace UniGetUI.PackageEngine.Toolbox
         {
             try
             {
-                string url = ResolveInstallerUrl(app.InstallerUrl);
+                string url = ToolboxCloudConfig.ResolveInstallerUrl(app.InstallerUrl);
                 string packagesRoot = Path.Join(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "Microsoft", "WinGet", "Packages");
