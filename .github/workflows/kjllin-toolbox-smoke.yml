@@ -1,0 +1,140 @@
+name: kjllin-toolbox-smoke
+
+# Verifies the Windows runtime path that only compiles in CI: cloud config fetch,
+# local manifest generation and winget install --manifest of an own app.
+on:
+  workflow_dispatch:
+  push:
+    branches: [polaris]
+    paths:
+      - ".github/workflows/kjllin-toolbox-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download the rolling nightly build
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "toolbox.zip"
+          $dir = Join-Path $env:RUNNER_TEMP "toolbox"
+          Invoke-WebRequest -Uri "https://github.com/KJLLin/KJLLin-Toolbox/releases/download/nightly/KJLLin.Toolbox.x64.zip" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          Get-Item (Join-Path $dir "UniGetUI.exe") | Select-Object Name, Length
+
+      - name: Prepare winget for local manifests
+        shell: pwsh
+        run: |
+          winget --version
+          winget settings --enable LocalManifestFiles
+          winget settings export | Out-String -Stream | Select-String -Pattern "LocalManifest"
+
+      - name: Reachability of the own-app installer
+        shell: pwsh
+        run: |
+          $url = "https://gitee.com/kjllin/hpcl-launcher/releases/download/v3.17.0/HPCL-3.17.0.exe"
+          try {
+            $r = Invoke-WebRequest -Uri $url -Method Head -TimeoutSec 25
+            "Gitee reachable: $($r.StatusCode)"
+          } catch {
+            "Gitee not reachable from this runner: $($_.Exception.Message)"
+          }
+
+      - name: Run the client and install the own app
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:RUNNER_TEMP "toolbox\UniGetUI.exe"
+          $proc = Start-Process -FilePath $exe -ArgumentList "--toolbox-own-install", "hpcl" -PassThru
+          "started pid $($proc.Id)"
+
+          $packages = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
+          $deadline = (Get-Date).AddSeconds(150)
+          $found = $null
+          while ((Get-Date) -lt $deadline) {
+            Start-Sleep -Seconds 10
+            $found = Get-ChildItem $packages -Filter "KJLLin.HPCL_*" -Directory -ErrorAction SilentlyContinue
+            if ($found) { break }
+          }
+          if ($found) { "installed: $($found.Name)" } else { "no KJLLin.HPCL package directory after 150s" }
+
+          Get-Process UniGetUI -ErrorAction SilentlyContinue | Select-Object Id, StartTime
+          Get-Process UniGetUI -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
+      - name: Assert what the client produced
+        shell: pwsh
+        run: |
+          $fail = @()
+
+          function Check($name, $ok, $detail) {
+            if ($ok) { "PASS  $name  $detail" } else { "FAIL  $name  $detail"; $script:fail += $name }
+          }
+
+          $data = Join-Path $env:LOCALAPPDATA "KJLLin Toolbox"
+
+          # 1. cloud config fetched and cached
+          $cfgFile = Join-Path $data "cloud-config.json"
+          if (Test-Path $cfgFile) {
+            $cfg = Get-Content $cfgFile -Raw | ConvertFrom-Json
+            Check "cloud-config" ($null -ne $cfg.schema) "schema=$($cfg.schema) curated=$($cfg.curated.Count) sections=$($cfg.sections.Count) owned=$($cfg.ownedApps.Count)"
+          } else { Check "cloud-config" $false "missing $cfgFile" }
+
+          # 2. local manifest written for the own app
+          $manifest = Join-Path $data "manifests\hpcl\3.17.0\KJLLin.HPCL.installer.yaml"
+          if (Test-Path $manifest) {
+            $text = Get-Content $manifest -Raw
+            $hasHash = $text -match "4F0128CFAEF3F59E96F443E8E5D2B7E068B326E983193404042F6BD9833BC476"
+            Check "manifest" $hasHash "installer yaml with pinned sha256"
+          } else { Check "manifest" $false "missing $manifest" }
+
+          # 3. winget actually installed it
+          $pkg = Get-ChildItem (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages") -Filter "KJLLin.HPCL_*" -Directory -ErrorAction SilentlyContinue
+          Check "winget-install" ($null -ne $pkg) ($pkg | Select-Object -First 1 -ExpandProperty Name)
+
+          # 4. start menu shortcut
+          $lnk = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\HPCL.lnk"
+          Check "shortcut" (Test-Path $lnk) $lnk
+
+          # 5. state file recorded the version
+          $state = Join-Path $data "owned-apps.json"
+          if (Test-Path $state) {
+            $json = Get-Content $state -Raw | ConvertFrom-Json
+            Check "state" ($json.hpcl -eq "3.17.0") "hpcl=$($json.hpcl)"
+          } else { Check "state" $false "missing $state" }
+
+          # Diagnostics: the client log tells why an install failed
+          $logs = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "*.log" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -like "*UniGetUI*" -or $_.FullName -like "*KJLLin*" }
+          foreach ($log in $logs) {
+            "--- $($log.FullName)"
+            Select-String -Path $log.FullName -Pattern "manifest|LocalManifest|winget manifest|Toolbox" |
+              Select-Object -Last 25 | ForEach-Object { $_.Line }
+          }
+
+          if ($fail.Count -gt 0) { throw "smoke failed: $($fail -join ', ')" }
+
+      - name: Collect artifacts
+        if: always()
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP "smoke-out"
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+          $data = Join-Path $env:LOCALAPPDATA "KJLLin Toolbox"
+          if (Test-Path $data) { Copy-Item $data $out -Recurse -Force }
+          Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "*.log" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -like "*UniGetUI*" -or $_.FullName -like "*KJLLin*" } |
+            ForEach-Object { Copy-Item $_.FullName (Join-Path $out $_.Name) -Force }
+          if (Test-Path (Join-Path $env:RUNNER_TEMP "toolbox")) {
+            Get-ChildItem (Join-Path $env:RUNNER_TEMP "toolbox") | Select-Object Name, Length > (Join-Path $out "extracted-files.txt")
+          }
+
+      - name: Upload smoke output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolbox-smoke-output
+          path: ${{ runner.temp }}/smoke-out
+          if-no-files-found: warn
