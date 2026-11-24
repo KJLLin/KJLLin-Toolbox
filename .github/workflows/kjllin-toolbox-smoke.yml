@@ -33,6 +33,47 @@ jobs:
           winget settings --enable LocalManifestFiles
           winget settings export | Out-String -Stream | Select-String -Pattern "LocalManifest"
 
+      - name: Verify the arm64 App Installer mirror
+        shell: pwsh
+        run: |
+          $fail = @()
+          function Check($name, $ok, $detail) {
+            if ($ok) { "PASS  $name  $detail" } else { "FAIL  $name  $detail"; $script:fail += $name }
+          }
+
+          # The bootstrap script must pick packages by OS architecture, not by the
+          # PROCESSOR_ARCHITECTURE env var (it reports AMD64 inside x64 emulation).
+          $scriptUrl = "https://gitee.com/kjllin/kjllin-toolbox-bucket/raw/main/winget/EnsureWinGet.ps1"
+          $scriptText = (Invoke-WebRequest -Uri $scriptUrl -TimeoutSec 60).Content
+          Check "arch-switch" (($scriptText -match "arm64Packages") -and ($scriptText -match "OSArchitecture")) `
+            "mirrored bootstrap script selects packages by OS architecture"
+
+          $base = "https://gitee.com/kjllin/kjllin-toolbox-bucket/releases/download/winget-bootstrap"
+          $pinned = @(
+            @{ File = "AppInstaller_arm64.msix";                                  Size = 61973708; Sha = "0D620E0B049A7A899EB72FD936AC9D1F67EC85C425E27B57AAB8DFADC3ED7FB8" },
+            @{ File = "Microsoft.WindowsAppRuntime.1.8_8000.616.304.0_arm64.appx"; Size = 23780657; Sha = "70A518282C2CE7FF7579870958C059BED48323BEF9B1020632BA10C41BAC27A0" },
+            @{ File = "Microsoft.VCLibs.140.00.UWPDesktop_14.0.33728.0_arm64.appx"; Size = 11161325; Sha = "831118F2F5CAC8E29284E4ECC23BF4236436CCC2EA4A7C225C4946F8CFD29DD3" },
+            @{ File = "Microsoft.VCLibs.140.00_14.0.33519.0_arm64.appx";           Size = 1570406;  Sha = "C73D0F55DDA331F9DCBEFC99FF5A420B62120773D2917387639382AA478533EE" }
+          )
+
+          $tmp = Join-Path $env:RUNNER_TEMP "arm64-bootstrap"
+          New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+          foreach ($p in $pinned) {
+            $dest = Join-Path $tmp $p.File
+            try {
+              Invoke-WebRequest -Uri "$base/$($p.File)" -OutFile $dest -TimeoutSec 300
+            } catch {
+              Check "arm64-pkg" $false "$($p.File) download failed: $($_.Exception.Message)"
+              continue
+            }
+            $len = (Get-Item $dest).Length
+            $hash = (Get-FileHash $dest -Algorithm SHA256).Hash
+            $ok = ($len -eq $p.Size) -and ($hash -eq $p.Sha)
+            Check "arm64-pkg" $ok "$($p.File) bytes=$len sha=$($hash.Substring(0, 16))..."
+          }
+
+          if ($fail.Count -gt 0) { throw "arm64 bootstrap failed: $($fail -join ', ')" }
+
       - name: Reachability of the own-app installer
         shell: pwsh
         run: |

@@ -58,7 +58,7 @@
 
 两个仓库都镜像到 Gitee（`kjllin/kjllin-toolbox-bucket`、`kjllin-toolbox-bucket-beta`），客户端默认走 Gitee raw，GitHub 只作兜底。
 
-App Installer 引导包在 Gitee Release `winget-bootstrap` 里：单架构 `AppInstaller_x64.msix`（62.5 MB）加三个 x64 依赖包，匿名可下、sha256 已固定在校验表里。
+App Installer 引导包在 Gitee Release `winget-bootstrap` 里，x64 与 arm64 各一套：`AppInstaller_x64.msix`（62,556,620 B）与 `AppInstaller_arm64.msix`（61,973,708 B），各配三个同版本架构依赖（`Microsoft.VCLibs.140.00_14.0.33519.0`、`Microsoft.VCLibs.140.00.UWPDesktop_14.0.33728.0`、`Microsoft.WindowsAppRuntime.1.8_8000.616.304.0`）。八份文件全部匿名可下、sha256 固定在校验表里，脚本按 `RuntimeInformation.OSArchitecture` 选包（`PROCESSOR_ARCHITECTURE` 在 ARM64 上的 x64 模拟进程里会误报成 `AMD64`，只当兜底）。
 
 ## 一键改造
 
