@@ -41,7 +41,7 @@
 
 发一个版本只要改 `ownedApps[].version` 与 `installerUrl`，不需要重新出包。`notice` 的 `id` 留空表示每次启动都弹；填了 id 则用户关掉后本机不再显示。
 
-自有应用在 winget 社区源里查不到，因此它们由客户端从云端配置注入：浏览时排在最前，搜索时按 `key` / 显示名 / 标识符 / 别名匹配。安装走 `winget install --manifest <本地目录>`（manifest 在 `%LOCALAPPDATA%\KJLLin Toolbox\manifests\` 现写），`LocalManifestFiles` 只在首次安装时向用户要一次提权，成功后写 `localmanifest-policy.ok`，之后不再弹 UAC。
+自有应用在 winget 社区源里查不到，因此它们由客户端从云端配置注入：浏览时排在最前，搜索时按 `key` / 显示名 / 标识符 / 别名匹配。安装走 `winget install --manifest <本地目录>`（manifest 在 `%LOCALAPPDATA%\KJLLin Toolbox\manifests\` 现写），`LocalManifestFiles` 只在首次安装时向用户要一次提权，成功后写 `localmanifest-policy.ok`，之后不再弹 UAC。winget 的 CLI 在不同版本上只认 `-m` 或 `--manifest` 中的一个（1.11.510 只认短参数，两个都会试），两者都被拒时按云端 pin 的 URL + sha256 下载，直接落到 `%LOCALAPPDATA%\Microsoft\WinGet\Packages\<ID>_<版本>\` 的便携布局——校验强度不变，快捷方式和后续升级逻辑也照旧。
 
 更新页默认与搜索一样只认精选和自有应用（`updatesScope` 改 `all` 可放开）：`winget upgrade` 的结果会先被过滤到这两个集合，自有应用的待更新项由云端版本与本地记录的版本比对后补上。装在其他来源的软件不会出现在更新页（仍可在“已安装”页查看和卸载）。
 
@@ -101,7 +101,7 @@ KJLLin.Toolbox.exe --toolbox-own-list                # 列出云端声明的自�
 KJLLin.Toolbox.exe --toolbox-own-install hpcl       # 立刻装/更新一个自有应用
 ```
 
-安装走本地 manifest，第一次会弹一次 UAC 启用 `LocalManifestFiles`；用户拒绝时该应用保持未安装，客户端其余功能不受影响。
+安装优先走本地 manifest，第一次会弹一次 UAC 启用 `LocalManifestFiles`；用户拒绝、或该 winget 版本不接受 manifest 参数时，退回云端 pin 的下载直接便携安装，客户端其余功能不受影响。
 
 ## 还需要你本机做的
 
