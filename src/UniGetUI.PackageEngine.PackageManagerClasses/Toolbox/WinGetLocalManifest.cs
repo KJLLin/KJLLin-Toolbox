@@ -102,8 +102,9 @@ namespace UniGetUI.PackageEngine.Toolbox
                     return [];
                 }
 
-                return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
-                    File.ReadAllText(StateFilePath)) ?? [];
+                return System.Text.Json.JsonSerializer.Deserialize(
+                    File.ReadAllText(StateFilePath),
+                    ToolboxJsonContext.Default.DictionaryStringString) ?? [];
             }
             catch (Exception e)
             {

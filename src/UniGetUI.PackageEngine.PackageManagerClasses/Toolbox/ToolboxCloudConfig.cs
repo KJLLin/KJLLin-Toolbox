@@ -118,11 +118,6 @@ namespace UniGetUI.PackageEngine.Toolbox
 
         private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
         private static readonly SemaphoreSlim Gate = new(1, 1);
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            PropertyNameCaseInsensitive = true,
-        };
-
         private static ToolboxConfig? _current;
         private static DateTime _loadedAt = DateTime.MinValue;
         private static HashSet<string>? _dismissed;
@@ -321,7 +316,8 @@ namespace UniGetUI.PackageEngine.Toolbox
                 try
                 {
                     string payload = await Http.GetStringAsync(source, ct).ConfigureAwait(false);
-                    ToolboxConfig? config = JsonSerializer.Deserialize<ToolboxConfig>(payload, JsonOptions);
+                    ToolboxConfig? config = JsonSerializer.Deserialize(
+                        payload, ToolboxJsonContext.Default.ToolboxConfig);
                     if (config is null || config.Schema < 1)
                     {
                         Logger.Warn($"Toolbox cloud config at {source} is not usable");
@@ -349,8 +345,8 @@ namespace UniGetUI.PackageEngine.Toolbox
                     return null;
                 }
 
-                ToolboxConfig? cached = JsonSerializer.Deserialize<ToolboxConfig>(
-                    File.ReadAllText(CacheFile), JsonOptions);
+                ToolboxConfig? cached = JsonSerializer.Deserialize(
+                    File.ReadAllText(CacheFile), ToolboxJsonContext.Default.ToolboxConfig);
                 return cached is { Schema: >= 1 } ? cached : null;
             }
             catch (Exception e)
@@ -365,7 +361,9 @@ namespace UniGetUI.PackageEngine.Toolbox
             try
             {
                 Directory.CreateDirectory(DataDirectory);
-                File.WriteAllText(CacheFile, JsonSerializer.Serialize(config, JsonOptions));
+                File.WriteAllText(
+                    CacheFile,
+                    JsonSerializer.Serialize(config, ToolboxJsonContext.Default.ToolboxConfig));
             }
             catch (Exception e)
             {
@@ -387,7 +385,8 @@ namespace UniGetUI.PackageEngine.Toolbox
                 {
                     if (File.Exists(DismissedFile))
                     {
-                        string[]? ids = JsonSerializer.Deserialize<string[]>(File.ReadAllText(DismissedFile));
+                        string[]? ids = JsonSerializer.Deserialize(
+                            File.ReadAllText(DismissedFile), ToolboxJsonContext.Default.StringArray);
                         _dismissed = new HashSet<string>(ids ?? [], StringComparer.OrdinalIgnoreCase);
                         return _dismissed;
                     }
@@ -419,7 +418,8 @@ namespace UniGetUI.PackageEngine.Toolbox
                 Directory.CreateDirectory(DataDirectory);
                 File.WriteAllText(
                     DismissedFile,
-                    JsonSerializer.Serialize(Dismissed.ToArray()),
+                    JsonSerializer.Serialize(
+                        Dismissed.ToArray(), ToolboxJsonContext.Default.StringArray),
                     System.Text.Encoding.UTF8);
             }
             catch (Exception e)

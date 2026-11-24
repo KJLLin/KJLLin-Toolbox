@@ -229,7 +229,9 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
                     return [];
                 }
 
-                return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(StateFile)) ?? [];
+                return JsonSerializer.Deserialize(
+                    File.ReadAllText(StateFile),
+                    ToolboxJsonContext.Default.DictionaryStringString) ?? [];
             }
             catch (Exception e)
             {
@@ -243,7 +245,10 @@ namespace UniGetUI.Avalonia.Infrastructure.Toolbox
             try
             {
                 Directory.CreateDirectory(DataDirectory);
-                File.WriteAllText(StateFile, JsonSerializer.Serialize(state));
+                File.WriteAllText(
+                    StateFile,
+                    JsonSerializer.Serialize(
+                        state, ToolboxJsonContext.Default.DictionaryStringString));
             }
             catch (Exception e)
             {
