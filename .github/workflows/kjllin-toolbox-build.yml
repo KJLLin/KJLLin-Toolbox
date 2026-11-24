@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/kjllin-toolbox-build.yml"
       - "branding/**"
+      - "InstallerExtras/**"
       - "src/**"
       - "UniGetUI.iss"
       - "global.json"
