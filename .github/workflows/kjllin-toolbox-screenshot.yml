@@ -39,7 +39,7 @@ jobs:
         shell: pwsh
         run: |
           $exe = Join-Path $env:RUNNER_TEMP "toolbox\UniGetUI.exe"
-          $proc = Start-Process -FilePath $exe -PassThru
+          $proc = Start-Process -FilePath $exe -WindowStyle Maximized -PassThru
           "started pid $($proc.Id)"
 
           $handle = 0
@@ -71,8 +71,12 @@ jobs:
             "saved $($item.Name) $($item.Length) bytes"
           }
 
-          # 1. whole screen
           $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          # keep the pointer away from the toolbar so no flyout opens in the capture
+          [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point ($screen.Right - 4), ($screen.Bottom - 60)
+          Start-Sleep -Seconds 2
+
+          # 1. whole screen
           $full = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
           $graphics = [System.Drawing.Graphics]::FromImage($full)
           $graphics.CopyFromScreen($screen.Location, [System.Drawing.Point]::Empty, $screen.Size)

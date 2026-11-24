@@ -217,6 +217,9 @@ public partial class MainWindow : Window
     public void SetExtensionEnabled(PageType page, bool enabled) => ViewModel.SetExtensionEnabled(page, enabled);
     internal void ApplyCloudNotice(PackageEngine.Toolbox.ToolboxConfig config)
         => ViewModel.ApplyCloudNotice(config.Notice, config.Announcement);
+
+    internal void ApplyCloudSections()
+        => ViewModel.ApplyCloudSections();
 #if UNIGETUI_XCODE_EXTENSION
     public bool XcodeEnabled => ViewModel.Sidebar.XcodeEnabled;
     public XcodeViewModel? Xcode => ViewModel.Xcode;

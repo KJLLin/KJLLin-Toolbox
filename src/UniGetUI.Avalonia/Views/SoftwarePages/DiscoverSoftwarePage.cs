@@ -66,13 +66,28 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
     /// Homepage sections come from the cloud config. Each one becomes a toolbar button that
     /// narrows the visible list to that group; "All" restores the full catalogue.
     /// </summary>
-    private static void AddSectionToolbar(PackagesPageViewModel vm)
+    private bool _sectionToolbarApplied;
+
+    /// <summary>
+    /// The cloud config normally arrives after this page is built, so the section buttons
+    /// are injected later from the startup task instead of only here.
+    /// </summary>
+    internal void ApplyCloudSections() => AddSectionToolbar(ViewModel);
+
+    private void AddSectionToolbar(PackagesPageViewModel vm)
     {
+        if (_sectionToolbarApplied)
+        {
+            return;
+        }
+
         ToolboxConfig? config = ToolboxCloudConfig.TryGetCurrent();
         if (config?.Sections is not { Length: > 0 } sections)
         {
             return;
         }
+
+        _sectionToolbarApplied = true;
 
         vm.AddToolbarButton(
             "catalog_add",

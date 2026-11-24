@@ -658,7 +658,8 @@ public partial class MainWindowViewModel : ViewModelBase
             WinGetWarningBanner.IsOpen = true;
         }
 
-        if (!Settings.Get(Settings.K.ShownTelemetryBanner))
+        // Toolbox policy disables telemetry, so the upstream opt-in banner never appears.
+        if (!Settings.Get(Settings.K.DisableTelemetry) && !Settings.Get(Settings.K.ShownTelemetryBanner))
         {
             TelemetryWarner.Title = CoreTools.Translate("Share anonymous usage data");
             TelemetryWarner.Message = CoreTools.Translate(
@@ -1335,6 +1336,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// it records the id so the same push never reappears. The plain-text Announcement of
     /// older configs keeps working and shows on every start.
     /// </summary>
+    /// <summary>Cloud sections arrive after the discover page exists; hand them to it.</summary>
+    public void ApplyCloudSections() => DiscoverPage.ApplyCloudSections();
+
     internal void ApplyCloudNotice(ToolboxNoticeConfig? notice, string? legacyMessage)
     {
         string message = notice?.Message ?? "";

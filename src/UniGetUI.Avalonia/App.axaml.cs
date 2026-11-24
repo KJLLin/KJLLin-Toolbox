@@ -31,6 +31,10 @@ public partial class App : Application
 {
     public override void Initialize()
     {
+        // Must run before the main window is built, otherwise the first-run telemetry
+        // banner has already been queued by MainWindowViewModel.
+        ApplyToolboxPolicy();
+
         AvaloniaXamlLoader.Load(this);
 
         ButtonActivationGuard.Install();
@@ -52,6 +56,19 @@ public partial class App : Application
 #if AVALONIA_DIAGNOSTICS_ENABLED
         this.AttachDeveloperTools();
 #endif
+    }
+
+    /// <summary>
+    /// Toolbox policy: telemetry is off and the client never updates itself. The telemetry
+    /// and updater stacks stay compiled in, so removing this call restores upstream behaviour.
+    /// </summary>
+    internal static void ApplyToolboxPolicy()
+    {
+        CoreSettings.Set(CoreSettings.K.DisableTelemetry, true);
+        CoreSettings.Set(CoreSettings.K.ShownTelemetryBanner, true);
+        CoreSettings.Set(CoreSettings.K.DisableAutoUpdateWingetUI, true);
+        CoreSettings.Set(CoreSettings.K.DisableAutoCheckforUpdates, true);
+        CoreSettings.Set(CoreSettings.K.InstallUniGetUIUpdatesWhenIdle, false);
     }
 
     private void ApplyWindowsMicaStyling()
@@ -263,14 +280,7 @@ public partial class App : Application
 
     private static async Task StartupAsync(MainWindow mainWindow, string[] args)
     {
-        // Toolbox policy: telemetry is off and the client never updates itself. The updater
-        // and telemetry stacks stay in the build untouched, so deleting this block is all it
-        // takes to restore the upstream behaviour.
-        CoreSettings.Set(CoreSettings.K.DisableTelemetry, true);
-        CoreSettings.Set(CoreSettings.K.ShownTelemetryBanner, true);
-        CoreSettings.Set(CoreSettings.K.DisableAutoUpdateWingetUI, true);
-        CoreSettings.Set(CoreSettings.K.DisableAutoCheckforUpdates, true);
-        CoreSettings.Set(CoreSettings.K.InstallUniGetUIUpdatesWhenIdle, false);
+        ApplyToolboxPolicy();
 
         _ = UninstallRequestHandler.HandleAsync(mainWindow, args);
         // Cloud-managed catalogue and self-hosted apps. Both run in the background:
@@ -296,7 +306,11 @@ public partial class App : Application
                     Logger.Info($"Toolbox notice: {config.Notice?.Title ?? config.Announcement}");
                 }
 
-                Dispatcher.UIThread.Post(() => mainWindow.ApplyCloudNotice(config));
+                Dispatcher.UIThread.Post(() =>
+                {
+                    mainWindow.ApplyCloudNotice(config);
+                    mainWindow.ApplyCloudSections();
+                });
             }
             catch (Exception e)
             {
