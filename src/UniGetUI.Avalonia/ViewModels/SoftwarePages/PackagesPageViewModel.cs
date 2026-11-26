@@ -800,9 +800,6 @@ public partial class PackagesPageViewModel : ViewModelBase
 
     public void FilterPackages()
     {
-        // Any rebuild invalidates the snapshot taken for a homepage section.
-        _sectionSnapshot = null;
-
         var filter = BuildPackageFilter(out string query);
         var results = FilteredPackages.ApplyToList(_wrappedPackages.Where(filter)).ToList();
 

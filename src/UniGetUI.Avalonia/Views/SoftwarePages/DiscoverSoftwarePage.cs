@@ -140,14 +140,10 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
         vm.AddToolbarButton(
             "catalog",
             allLabel,
-            () =>
-            {
-                vm.ApplySectionFilter(null);
-                SetActiveSection(vm, allLabel);
-            },
+            () => vm.ApplySectionFilter(null, allLabel),
             index: 1,
             alwaysShowLabel: true);
-        SetActiveSection(vm, allLabel);
+        vm.ApplySectionFilter(null, allLabel);
 
         int slot = 2;
         foreach (ToolboxSectionConfig section in sections)
@@ -157,35 +153,12 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
                 ? DefaultSectionIcon(section.Key)
                 : section.Icon;
             string[] ids = section.Ids;
-            vm.AddToolbarButton(icon, title, () =>
-                {
-                    vm.ApplySectionFilter(ids);
-                    SetActiveSection(vm, title);
-                },
+            vm.AddToolbarButton(icon, title, () => vm.ApplySectionFilter(ids, title),
                 index: slot, alwaysShowLabel: true);
             slot++;
         }
 
         Logger.Info($"[TOOLBOX] sections={sections.Length}");
-    }
-
-    /// <summary>
-    /// Marks the clicked section so the filter is visible even when the list is empty.
-    /// </summary>
-    private static void SetActiveSection(PackagesPageViewModel vm, string activeLabel)
-    {
-        Logger.Info($"[TOOLBOX] section={activeLabel} visible={vm.FilteredPackages.Count}");
-        foreach (ToolbarEntry entry in vm.ToolbarEntries)
-        {
-            if (entry.Control is not Button button)
-            {
-                continue;
-            }
-
-            button.Background = entry.Label == activeLabel
-                ? new SolidColorBrush(Color.FromArgb(46, 0, 95, 184))
-                : null;
-        }
     }
 
     /// <summary>Readable fallback so sections stay distinct even without a cloud icon.</summary>
