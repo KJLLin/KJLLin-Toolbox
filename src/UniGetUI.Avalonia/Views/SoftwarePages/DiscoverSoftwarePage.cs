@@ -128,12 +128,16 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
     /// </summary>
     private static void SetActiveSection(PackagesPageViewModel vm, string activeLabel)
     {
-        Brush? inactive = null;
         foreach (ToolbarEntry entry in vm.ToolbarEntries)
         {
-            entry.Control.Background = entry.Label == activeLabel
+            if (entry.Control is not Button button)
+            {
+                continue;
+            }
+
+            button.Background = entry.Label == activeLabel
                 ? new SolidColorBrush(Color.FromArgb(46, 0, 95, 184))
-                : inactive;
+                : null;
         }
     }
 
