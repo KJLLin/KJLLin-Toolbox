@@ -124,12 +124,16 @@ function Browse {
 
 # --- log helpers ----------------------------------------------------------------
 
-$LogRoot = Join-Path $env:LOCALAPPDATA "UniGetUI"
-
 function Get-LogText {
     $text = ""
-    foreach ($log in @(Get-ChildItem $LogRoot -Recurse -Filter "*.log" -ErrorAction SilentlyContinue)) {
-        $text += (Get-Content $log.FullName -Raw -Encoding UTF8) + "`n"
+    $logs = @(Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "*.log" -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -like "*UniGetUI*" -or $_.FullName -like "*KJLLin*" })
+    foreach ($log in $logs) {
+        try {
+            $text += (Get-Content $log.FullName -Raw -Encoding UTF8) + "`n"
+        } catch {
+            # the client keeps the file open while it writes
+        }
     }
     return $text
 }
@@ -164,6 +168,10 @@ for ($i = 0; $i -lt 60; $i++) {
 }
 if ($handle -eq 0) { throw "no window after 120s" }
 Write-Output "WINDOW-READY after $((($i + 1) * 2))s"
+
+$probe = @(Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "*.log" -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -like "*UniGetUI*" -or $_.FullName -like "*KJLLin*" })
+Write-Host "LOG-FILES $($probe.Count): $($probe | Select-Object -First 3 -ExpandProperty FullName)"
 
 [Win]::ShowWindow($handle, 9) | Out-Null   # SW_RESTORE: SW_SHOWMAXIMIZED kills the capture
 [Win]::SetForegroundWindow($handle) | Out-Null
