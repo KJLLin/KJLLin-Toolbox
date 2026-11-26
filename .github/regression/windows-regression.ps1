@@ -122,6 +122,21 @@ function Browse {
     [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
 }
 
+# The section buttons are hit-tested against the client log, not guessed: a toolbar that
+# has just been rebuilt can move a few pixels, and a click that lands on a gap is silent.
+function Click-Section([string]$label, [int]$x) {
+    $logBefore = (Get-LogText)
+    foreach ($dy in @(0, -5, 5, -10, 10)) {
+        Click-Rel $x (137 + $dy)
+        Start-Sleep -Seconds 2
+        if ((Get-LogText).Length -gt $logBefore.Length) {
+            Write-Host "SECTION-CLICK $label x=$x y=$(137 + $dy)"
+            return
+        }
+    }
+    Write-Host "SECTION-MISS $label x=$x"
+}
+
 # --- log helpers ----------------------------------------------------------------
 
 function Get-LogText {
@@ -204,18 +219,18 @@ Move-Away
 Save-Shot "05-home-from-cache"
 
 # 6. cloud sections
-Click-Rel 702 136
-Start-Sleep -Seconds 3
+Click-Section "游戏" 702
+Start-Sleep -Seconds 2
 Move-Away
 Save-Shot "06-section-games"
 
-Click-Rel 482 136
-Start-Sleep -Seconds 3
+Click-Section "必备工具" 482
+Start-Sleep -Seconds 2
 Move-Away
 Save-Shot "07-section-essentials"
 
-Click-Rel 400 136
-Start-Sleep -Seconds 3
+Click-Section "全部" 409
+Start-Sleep -Seconds 2
 Move-Away
 Save-Shot "08-section-all"
 

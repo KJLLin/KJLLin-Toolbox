@@ -16,6 +16,7 @@ using UniGetUI.Avalonia.Infrastructure;
 using UniGetUI.Avalonia.ViewModels;
 using UniGetUI.Avalonia.Views;
 using UniGetUI.Avalonia.Views.Controls;
+using UniGetUI.Core.Logging;
 using UniGetUI.Core.SettingsEngine;
 using UniGetUI.Core.Tools;
 using UniGetUI.Interface.Telemetry;
@@ -756,6 +757,8 @@ public partial class PackagesPageViewModel : ViewModelBase
         ActiveSectionLabel = label;
         FilterPackages();
         ApplySectionHighlight();
+        Logger.Info(
+            $"[TOOLBOX] section={ActiveSectionLabel ?? "all"} visible={FilteredPackages.Count}");
     }
 
     /// <summary>
