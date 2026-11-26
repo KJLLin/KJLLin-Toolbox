@@ -67,15 +67,32 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
     }
 
     private bool _browseStarted;
+    private int _browseAttempts;
 
     /// <summary>
     /// The homepage is the store itself: it has to show the catalogue without the user
     /// pressing Enter first.
+    ///
+    /// Retried until winget reports ready: a load started before the manager initialises
+    /// silently produces an empty list, which is what made the store look dead.
     /// </summary>
     private void StartBrowseIfEmpty()
     {
         if (_browseStarted)
         {
+            return;
+        }
+
+        if (!PEInterface.Managers.Any(manager => manager.IsReady()))
+        {
+            if (_browseAttempts++ < 20)
+            {
+                DispatcherTimer.RunOnce(StartBrowseIfEmpty, TimeSpan.FromSeconds(3));
+            }
+            else
+            {
+                Logger.Warn("[TOOLBOX] no package manager became ready for the homepage");
+            }
             return;
         }
 

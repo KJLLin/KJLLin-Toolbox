@@ -139,12 +139,12 @@ function Wait-ForLog([string]$pattern, [int]$seconds) {
     $deadline = (Get-Date).AddSeconds($seconds)
     while ((Get-Date) -lt $deadline) {
         if ((Get-LogText) -match $pattern) {
-            Write-Output "LOG-HIT $pattern"
+            Write-Host "LOG-HIT $pattern"
             return $true
         }
         Start-Sleep -Seconds 3
     }
-    Write-Output "LOG-TIMEOUT $pattern after ${seconds}s"
+    Write-Host "LOG-TIMEOUT $pattern after ${seconds}s"
     return $false
 }
 
