@@ -1,0 +1,170 @@
+name: kjllin-toolbox-regression
+
+# Full end-to-end regression of the shipped store on a real Windows machine: the own
+# app, the curated catalogue, search scope, cloud sections, and the install path.
+# Runs automatically after every successful build, and on demand.
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["kjllin-toolbox-build"]
+    types: [completed]
+    branches: [polaris]
+
+permissions:
+  contents: read
+
+jobs:
+  regression-windows:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out the store sources
+        uses: actions/checkout@v4
+        with:
+          ref: polaris
+
+      - name: Download the rolling nightly build
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP "toolbox.zip"
+          $dir = Join-Path $env:RUNNER_TEMP "toolbox"
+          $base = "https://github.com/KJLLin/KJLLin-Toolbox/releases/download/nightly"
+          Invoke-WebRequest -Uri "$base/KJLLin.Toolbox.x64.zip" -OutFile $zip -TimeoutSec 600
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          Get-Item (Join-Path $dir "UniGetUI.exe") | Select-Object Name, Length
+          "checksums: $((Invoke-WebRequest -Uri "$base/checksums.x64.txt" -TimeoutSec 60).Content)"
+
+      - name: Allow local manifests for the own-app install path
+        shell: pwsh
+        run: |
+          winget --version
+          winget settings --enable LocalManifestFiles
+          winget settings export | Out-String -Stream | Select-String -Pattern "LocalManifest"
+
+      - name: Drive the GUI and capture every step
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:RUNNER_TEMP "toolbox\UniGetUI.exe"
+          $out = Join-Path $env:RUNNER_TEMP "regression-out\shots"
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+          & "$env:GITHUB_WORKSPACE\.github\regression\windows-regression.ps1" -Exe $exe -OutDir $out
+
+      - name: Close the client so its log flushes
+        if: always()
+        shell: pwsh
+        run: |
+          Get-Process UniGetUI -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.CloseMainWindow() | Out-Null }
+          Start-Sleep -Seconds 5
+          Get-Process UniGetUI -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
+      - name: Install the own app through the CLI
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:RUNNER_TEMP "toolbox\UniGetUI.exe"
+          $proc = Start-Process -FilePath $exe -ArgumentList "--toolbox-own-install", "hpcl" -PassThru
+          "install started pid $($proc.Id)"
+
+          $packages = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
+          $deadline = (Get-Date).AddSeconds(180)
+          $found = $null
+          while ((Get-Date) -lt $deadline) {
+            Start-Sleep -Seconds 10
+            $found = Get-ChildItem $packages -Filter "KJLLin.HPCL_*" -Directory -ErrorAction SilentlyContinue
+            if ($found) { break }
+          }
+          if ($found) { "installed: $($found.Name)" } else { "no KJLLin.HPCL package directory after 180s" }
+
+          Get-Process UniGetUI -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
+      - name: Assert the regression markers
+        shell: pwsh
+        run: |
+          $fail = @()
+          function Check($name, $ok, $detail) {
+            if ($ok) { "PASS  $name  $detail" } else { "FAIL  $name  $detail"; $script:fail += $name }
+          }
+
+          $out = Join-Path $env:RUNNER_TEMP "regression-out"
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+
+          $logs = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "*.log" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -like "*UniGetUI*" -or $_.FullName -like "*KJLLin*" }
+          $merged = ""
+          foreach ($log in $logs) {
+            $merged += (Get-Content $log.FullName -Raw -Encoding UTF8) + "`n"
+          }
+          Set-Content -Path (Join-Path $out "client-log.txt") -Value $merged -Encoding UTF8
+          $log = $merged
+
+          # store plumbing
+          Check "cloud-sections" ($log -match "\[TOOLBOX\] sections=4") "four section buttons injected"
+          Check "catalogue" ($log -match "\[TOOLBOX\] catalogue curated=14 owned=1 total=15") "browse returns 15 packages"
+          Check "cache-written" ($log -match "\[TOOLBOX\] catalogue cache written entries=14") "catalogue cached after the first browse"
+          Check "cache-hit" ($log -match "\[TOOLBOX\] catalogue cache hit") "second browse served from cache"
+          Check "notice" ($log -match "\[TOOLBOX\] notice id=welcome-v1") "cloud banner raised"
+          Check "cli-helper" (-not ($log -match "Native WinGet helper \(COM Api\)")) "winget runs through the CLI helper"
+
+          # search scope
+          Check "search-owned" ($log -match "\[TOOLBOX\] search query=hpcl matches=1 scope=curated") "own app is the only hpcl hit"
+          Check "search-chrome" ($log -match "\[TOOLBOX\] search query=chrome matches=1 scope=curated") "curated package found"
+          Check "search-scoop" ($log -match "\[TOOLBOX\] search query=scoop matches=0 scope=curated") "non-catalogued package excluded"
+
+          # sections
+          Check "section-games" ($log -match "\[TOOLBOX\] section=[^\r\n]+ visible=1") "games section narrows to one package"
+          Check "section-all" ($log -match "\[TOOLBOX\] section=[^\r\n]+ visible=15") "all section restores 15 packages"
+
+          # screenshots
+          $shots = Get-ChildItem (Join-Path $out "shots") -Filter *.png -ErrorAction SilentlyContinue
+          Check "shots" ($shots.Count -ge 9) "$($shots.Count) screenshots captured"
+          foreach ($shot in $shots) {
+            Check "shot-$($shot.BaseName)" ($shot.Length -gt 15000) "$($shot.Length) bytes"
+          }
+
+          # install path
+          $pkg = Get-ChildItem (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages") -Filter "KJLLin.HPCL_*" -Directory -ErrorAction SilentlyContinue
+          Check "own-app-installed" ($null -ne $pkg) ($pkg | Select-Object -First 1 -ExpandProperty Name)
+          $lnk = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\HPCL.lnk"
+          Check "start-menu" (Test-Path $lnk) $lnk
+          $state = Join-Path $env:LOCALAPPDATA "KJLLin Toolbox\owned-apps.json"
+          if (Test-Path $state) {
+            $json = Get-Content $state -Raw | ConvertFrom-Json
+            Check "state" ($json.hpcl -eq "3.17.0") "hpcl=$($json.hpcl)"
+          } else { Check "state" $false "missing $state" }
+
+          if ($fail.Count -gt 0) { throw "regression failed: $($fail -join ', ')" }
+
+      - name: Collect artefacts
+        if: always()
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP "regression-out"
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+
+          $logs = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "*.log" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -like "*UniGetUI*" -or $_.FullName -like "*KJLLin*" }
+          $merged = ""
+          foreach ($log in $logs) {
+            Copy-Item $log.FullName (Join-Path $out $log.Name) -Force
+            $merged += (Get-Content $log.FullName -Raw -Encoding UTF8)
+            $merged += "`n"
+          }
+          Set-Content -Path (Join-Path $out "client-log.txt") -Value $merged -Encoding UTF8
+
+          $data = Join-Path $env:LOCALAPPDATA "KJLLin Toolbox"
+          if (Test-Path $data) { Copy-Item $data (Join-Path $out "data") -Recurse -Force }
+          if (Test-Path (Join-Path $env:RUNNER_TEMP "toolbox")) {
+            Get-ChildItem (Join-Path $env:RUNNER_TEMP "toolbox") |
+              Select-Object Name, Length > (Join-Path $out "extracted-files.txt")
+          }
+          Get-ChildItem (Join-Path $out "shots") -ErrorAction SilentlyContinue |
+            Select-Object Name, Length > (Join-Path $out "shots.txt")
+
+      - name: Upload the regression run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolbox-regression
+          path: ${{ runner.temp }}/regression-out
+          if-no-files-found: warn
