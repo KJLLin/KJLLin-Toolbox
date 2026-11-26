@@ -45,7 +45,7 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
         DisableSuggestedResultsRadio = false,
         PackagesAreCheckedByDefault = false,
         ShowLastLoadTime = false,
-        DisableAutomaticPackageLoadOnStart = true,
+        DisableAutomaticPackageLoadOnStart = false,
         DisableFilterOnQueryChange = true,
         DisableReload = false,
         NoPackages_BackgroundText = CoreTools.Translate("No results were found matching the input criteria"),
@@ -92,12 +92,18 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
 
         vm.SectionToolbarApplied = true;
 
+        string allLabel = CoreTools.Translate("All");
         vm.AddToolbarButton(
             "catalog",
-            CoreTools.Translate("All"),
-            () => vm.ApplySectionFilter(null),
+            allLabel,
+            () =>
+            {
+                vm.ApplySectionFilter(null);
+                SetActiveSection(vm, allLabel);
+            },
             index: 1,
             alwaysShowLabel: true);
+        SetActiveSection(vm, allLabel);
 
         int slot = 2;
         foreach (ToolboxSectionConfig section in sections)
@@ -107,9 +113,27 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
                 ? DefaultSectionIcon(section.Key)
                 : section.Icon;
             string[] ids = section.Ids;
-            vm.AddToolbarButton(icon, title, () => vm.ApplySectionFilter(ids),
+            vm.AddToolbarButton(icon, title, () =>
+                {
+                    vm.ApplySectionFilter(ids);
+                    SetActiveSection(vm, title);
+                },
                 index: slot, alwaysShowLabel: true);
             slot++;
+        }
+    }
+
+    /// <summary>
+    /// Marks the clicked section so the filter is visible even when the list is empty.
+    /// </summary>
+    private static void SetActiveSection(PackagesPageViewModel vm, string activeLabel)
+    {
+        Brush? inactive = null;
+        foreach (ToolbarEntry entry in vm.ToolbarEntries)
+        {
+            entry.Control.Background = entry.Label == activeLabel
+                ? new SolidColorBrush(Color.FromArgb(46, 0, 95, 184))
+                : inactive;
         }
     }
 

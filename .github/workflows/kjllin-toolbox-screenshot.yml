@@ -84,7 +84,7 @@ jobs:
           Save-Bitmap $full (Join-Path $out "01-desktop.png")
 
           # 2. the client window itself, cropped so it is readable
-          Add-Type -Language CSharp -TypeDefinition 'using System; using System.Runtime.InteropServices; public struct RECT { public int Left, Top, Right, Bottom; } public class Win { [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c); }'
+          Add-Type -Language CSharp -TypeDefinition 'using System; using System.Runtime.InteropServices; public struct RECT { public int Left, Top, Right, Bottom; } public class Win { [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c); [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y); [DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int data, IntPtr extra); public static void Click(int x, int y) { SetCursorPos(x, y); System.Threading.Thread.Sleep(150); mouse_event(0x02, 0, 0, 0, IntPtr.Zero); System.Threading.Thread.Sleep(60); mouse_event(0x04, 0, 0, 0, IntPtr.Zero); } }'
           $live = Get-Process UniGetUI -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($live -and $live.MainWindowHandle -ne 0) {
             [Win]::ShowWindow($live.MainWindowHandle, 9) | Out-Null   # SW_RESTORE
@@ -104,6 +104,34 @@ jobs:
               Save-Bitmap $window (Join-Path $out "02-client.png")
             }
           } else { "window gone before the crop" }
+
+          # 2b. type a query and capture what the store finds
+          if ($live -and $live.MainWindowHandle -ne 0) {
+            $rect = New-Object RECT
+            [Win]::GetWindowRect($live.MainWindowHandle, [ref]$rect) | Out-Null
+
+            [Win]::Click(($rect.Left + 470), ($rect.Top + 25))   # search box
+            Start-Sleep -Milliseconds 300
+            [System.Windows.Forms.SendKeys]::SendWait("hpcl")
+            Start-Sleep -Milliseconds 300
+            [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+            Start-Sleep -Seconds 6
+
+            $screenShot = New-Object System.Drawing.Bitmap 908, 608
+            $graphics = [System.Drawing.Graphics]::FromImage($screenShot)
+            $graphics.CopyFromScreen($rect.Left, $rect.Top, 0, 0, (New-Object System.Drawing.Size 908, 608))
+            $graphics.Dispose()
+            Save-Bitmap $screenShot (Join-Path $out "03-search-hpcl.png")
+
+            [Win]::Click(($rect.Left + 470), ($rect.Top + 137))  # "必备工具" section
+            Start-Sleep -Seconds 3
+
+            $sectionShot = New-Object System.Drawing.Bitmap 908, 608
+            $graphics = [System.Drawing.Graphics]::FromImage($sectionShot)
+            $graphics.CopyFromScreen($rect.Left, $rect.Top, 0, 0, (New-Object System.Drawing.Size 908, 608))
+            $graphics.Dispose()
+            Save-Bitmap $sectionShot (Join-Path $out "04-section-click.png")
+          }
 
           # 3. anything the client logged, for the record
           Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "*.log" -ErrorAction SilentlyContinue |
