@@ -80,7 +80,7 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
         }
 
         _browseStarted = true;
-        if (ViewModel.Loader.IsLoading)
+        if (ViewModel.FilteredPackages.Count > 0)
         {
             return;
         }
