@@ -1363,6 +1363,7 @@ public partial class MainWindowViewModel : ViewModelBase
             : notice!.Title;
         AnnouncementBanner.Message = message;
         AnnouncementBanner.IsClosable = notice?.Closable ?? true;
+        Logger.Info($"[TOOLBOX] notice id={id} title={AnnouncementBanner.Title}");
 
         string url = notice?.Url ?? "";
         if (url.Length > 0)

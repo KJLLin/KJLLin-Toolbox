@@ -304,21 +304,52 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
         {
             // Browsing shows the curated catalogue only. Querying every source with an
             // empty term returns thousands of unrelated packages.
+            string[] ids = CuratedWinGet.Ordered.ToArray();
+            Dictionary<string, string>? cache = ToolboxCatalogueCache.TryLoadAny(
+                out bool staleCache);
             List<Package> curated = [];
-            foreach (string id in CuratedWinGet.Ordered)
+            Dictionary<string, string> entries = [];
+            int fetched = 0;
+
+            foreach (string id in ids)
             {
+                if (cache is not null
+                    && cache.TryGetValue(id, out string? packed)
+                    && ToolboxCatalogueCache.TryUnpack(packed, out string cachedName, out string cachedVersion))
+                {
+                    entries[id] = packed;
+                    curated.Add(new Package(cachedName, id, cachedVersion, Manager.DefaultSource, Manager));
+                    continue;
+                }
+
                 foreach (Package package in SearchPackages(id, null, 4))
                 {
                     if (string.Equals(package.Id, id, StringComparison.OrdinalIgnoreCase))
                     {
+                        entries[id] = ToolboxCatalogueCache.Pack(package.Name, package.VersionString);
                         curated.Add(package);
+                        fetched++;
                         break;
                     }
                 }
             }
 
+            // Whatever came from the cache stays usable; fresh data is written back, and a
+            // stale cache is refilled after the window is already up instead of blocking it.
+            if (fetched > 0)
+            {
+                ToolboxCatalogueCache.Save(entries);
+            }
+            else if (staleCache)
+            {
+                ScheduleCatalogueRefresh(ids);
+            }
+
             // Toolbox's own apps come first: they are the reason someone opens this store.
-            curated.InsertRange(0, GetToolboxOwnedPackages());
+            List<Package> owned = GetToolboxOwnedPackages();
+            curated.InsertRange(0, owned);
+            Logger.Info(
+                $"[TOOLBOX] catalogue curated={curated.Count - owned.Count} owned={owned.Count} total={curated.Count} cached={cache?.Count ?? 0} fetched={fetched} stale={staleCache}");
             return curated;
         }
 
@@ -338,6 +369,50 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
             .ToList();
         matches.AddRange(GetToolboxOwnedPackages(query));
         return matches;
+    }
+
+    private static int _catalogueRefreshStarted;
+
+    /// <summary>
+    /// Refills the catalogue cache once the store is already on screen. Runs at most once
+    /// per process, ten seconds after the first cached paint.
+    /// </summary>
+    private void ScheduleCatalogueRefresh(string[] ids)
+    {
+        if (Interlocked.Exchange(ref _catalogueRefreshStarted, 1) == 1)
+        {
+            return;
+        }
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(10));
+                Dictionary<string, string> entries = [];
+                foreach (string id in ids)
+                {
+                    foreach (Package package in SearchPackages(id, null, 4))
+                    {
+                        if (string.Equals(package.Id, id, StringComparison.OrdinalIgnoreCase))
+                        {
+                            entries[id] = ToolboxCatalogueCache.Pack(
+                                package.Name,
+                                package.VersionString);
+                            break;
+                        }
+                    }
+                }
+
+                ToolboxCatalogueCache.Save(entries);
+                Logger.Info($"[TOOLBOX] catalogue refreshed entries={entries.Count}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn("[TOOLBOX] catalogue refresh failed");
+                Logger.Warn(ex);
+            }
+        });
     }
 
     /// <summary>

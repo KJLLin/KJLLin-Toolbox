@@ -121,6 +121,8 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
                 index: slot, alwaysShowLabel: true);
             slot++;
         }
+
+        Logger.Info($"[TOOLBOX] sections={sections.Length}");
     }
 
     /// <summary>
@@ -128,6 +130,7 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
     /// </summary>
     private static void SetActiveSection(PackagesPageViewModel vm, string activeLabel)
     {
+        Logger.Info($"[TOOLBOX] section={activeLabel} visible={vm.FilteredPackages.Count}");
         foreach (ToolbarEntry entry in vm.ToolbarEntries)
         {
             if (entry.Control is not Button button)
