@@ -310,6 +310,7 @@ public abstract partial class AbstractPackagesPage : UserControl,
         foreach (var entry in ViewModel.ToolbarEntries)
             ToolBar.Children.Add(entry.Control);
         ToolBar.Children.Add(ToolbarOverflowButton);
+        ViewModel.ApplySectionHighlight();
     }
 
     private void PopulateToolbarOverflowFlyout()

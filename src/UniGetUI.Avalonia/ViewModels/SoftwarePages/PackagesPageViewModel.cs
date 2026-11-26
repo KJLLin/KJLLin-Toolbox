@@ -737,33 +737,40 @@ public partial class PackagesPageViewModel : ViewModelBase
         if (!MegaQueryBoxEnabled) FilterPackages();
     }
 
-    private List<PackageWrapper>? _sectionSnapshot;
+    /// <summary>
+    /// The cloud section currently narrowing the homepage, or null for everything. It is
+    /// part of <see cref="BuildPackageFilter"/>, so the subtitle and the row count stay in
+    /// step with the list — filtering the collection by hand left "15 found" above 3 rows.
+    /// </summary>
+    public IReadOnlyList<string>? ActiveSectionIds { get; private set; }
+
+    public string? ActiveSectionLabel { get; private set; }
+
+    private static readonly IBrush SectionActiveBrush = new SolidColorBrush(
+        Color.FromArgb(58, 0, 95, 184));
+
+    /// <summary>Narrows the homepage to one cloud-defined section.</summary>
+    public void ApplySectionFilter(IReadOnlyList<string>? ids, string? label = null)
+    {
+        ActiveSectionIds = ids is { Count: > 0 } ? ids : null;
+        ActiveSectionLabel = label;
+        FilterPackages();
+        ApplySectionHighlight();
+    }
 
     /// <summary>
-    /// Narrows the homepage to one cloud-defined section. The full list is snapshotted on
-    /// first use, so clearing the section restores it without another reload.
+    /// Re-applies the active button colour. The toolbar is rebuilt when cloud sections
+    /// arrive late, and a rebuilt button has no background of its own.
     /// </summary>
-    public void ApplySectionFilter(IReadOnlyList<string>? ids)
+    public void ApplySectionHighlight()
     {
-        _sectionSnapshot ??= FilteredPackages.ToList();
-
-        FilteredPackages.Clear();
-        if (ids is { Count: > 0 } sections)
+        foreach (ToolbarEntry entry in ToolbarEntries)
         {
-            HashSet<string> keep = new(sections, StringComparer.OrdinalIgnoreCase);
-            foreach (PackageWrapper wrapper in _sectionSnapshot)
+            if (entry.Control is Button button)
             {
-                if (keep.Contains(wrapper.Package.Id))
-                {
-                    FilteredPackages.Add(wrapper);
-                }
-            }
-        }
-        else
-        {
-            foreach (PackageWrapper wrapper in _sectionSnapshot)
-            {
-                FilteredPackages.Add(wrapper);
+                button.Background = entry.Label == ActiveSectionLabel
+                    ? SectionActiveBrush
+                    : null;
             }
         }
     }
@@ -836,7 +843,13 @@ public partial class PackagesPageViewModel : ViewModelBase
                         && visibleManagers.Contains(pkg.Manager)
                     );
 
-        return w => matchFunc(w.Package) && sourceFilter(w.Package);
+        HashSet<string>? sectionKeep = ActiveSectionIds is { Count: > 0 } sectionIds
+            ? new HashSet<string>(sectionIds, StringComparer.OrdinalIgnoreCase)
+            : null;
+
+        return w => matchFunc(w.Package)
+            && sourceFilter(w.Package)
+            && (sectionKeep is null || sectionKeep.Contains(w.Package.Id));
     }
 
     private void UpdateFilteredState(string query)
