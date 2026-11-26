@@ -112,7 +112,7 @@ jobs:
           Check "search-scoop" ($log -match "\[TOOLBOX\] search query=scoop matches=0 scope=curated") "non-catalogued package excluded"
 
           # sections
-          Check "section-games" ($log -match "\[TOOLBOX\] section=[^\r\n]+ visible=1") "games section narrows to one package"
+          Check "section-essentials" ($log -match "\[TOOLBOX\] section=[^\r\n]+ visible=5") "essentials section narrows to five packages"
           Check "section-all" ($log -match "\[TOOLBOX\] section=[^\r\n]+ visible=15") "all section restores 15 packages"
 
           # screenshots
