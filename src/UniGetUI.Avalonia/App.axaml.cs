@@ -69,6 +69,11 @@ public partial class App : Application
         CoreSettings.Set(CoreSettings.K.DisableAutoUpdateWingetUI, true);
         CoreSettings.Set(CoreSettings.K.DisableAutoCheckforUpdates, true);
         CoreSettings.Set(CoreSettings.K.InstallUniGetUIUpdatesWhenIdle, false);
+
+        // The curated catalogue, the blocklist and the store-owned apps are enforced in the
+        // CLI helper. winget's COM helper (the default on Windows) bypasses all of it, which
+        // made searches return arbitrary packages and hid the own apps, so the CLI is pinned.
+        CoreSettings.SetValue(CoreSettings.K.WinGetComApiPolicy, "disabled");
     }
 
     private void ApplyWindowsMicaStyling()
