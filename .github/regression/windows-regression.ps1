@@ -122,6 +122,32 @@ function Browse {
     [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
 }
 
+# --- log helpers ----------------------------------------------------------------
+
+$LogRoot = Join-Path $env:LOCALAPPDATA "UniGetUI"
+
+function Get-LogText {
+    $text = ""
+    foreach ($log in @(Get-ChildItem $LogRoot -Recurse -Filter "*.log" -ErrorAction SilentlyContinue)) {
+        $text += (Get-Content $log.FullName -Raw -Encoding UTF8) + "`n"
+    }
+    return $text
+}
+
+# Polls the client's own log instead of guessing how long a winget round trip takes.
+function Wait-ForLog([string]$pattern, [int]$seconds) {
+    $deadline = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $deadline) {
+        if ((Get-LogText) -match $pattern) {
+            Write-Output "LOG-HIT $pattern"
+            return $true
+        }
+        Start-Sleep -Seconds 3
+    }
+    Write-Output "LOG-TIMEOUT $pattern after ${seconds}s"
+    return $false
+}
+
 # --- run ------------------------------------------------------------------------
 
 $proc = Start-Process -FilePath $Exe -PassThru
@@ -144,9 +170,11 @@ Write-Output "WINDOW-READY after $((($i + 1) * 2))s"
 Start-Sleep -Seconds 3
 
 # 1. first paint. Browsing asks winget once per curated id, so this is the slow one.
-Start-Sleep -Seconds 60
+$firstLoad = Wait-ForLog "\[TOOLBOX\] catalogue curated=" 150
+Start-Sleep -Seconds 3
 Move-Away
 Save-Shot "01-home-first-load"
+if (-not $firstLoad) { throw "the catalogue never finished loading" }
 
 # 2. the own app, which no winget source knows about
 Search "hpcl" 12
@@ -162,7 +190,8 @@ Save-Shot "04-search-chrome"
 
 # 5. browsing again: the catalogue cache should make this instant
 Browse
-Start-Sleep -Seconds 6
+$cached = Wait-ForLog "\[TOOLBOX\] catalogue cache hit" 45
+Start-Sleep -Seconds 3
 Move-Away
 Save-Shot "05-home-from-cache"
 

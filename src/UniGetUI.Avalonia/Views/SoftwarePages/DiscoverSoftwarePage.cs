@@ -60,6 +60,33 @@ public class DiscoverSoftwarePage : AbstractPackagesPage
     })
     {
         _catalogEditor = catalogEditor;
+
+        // Upstream only auto-loads the discoverable packages off Windows, so the store
+        // opened on a blank "Loading packages" state until a query was submitted.
+        Loaded += (_, _) => StartBrowseIfEmpty();
+    }
+
+    private bool _browseStarted;
+
+    /// <summary>
+    /// The homepage is the store itself: it has to show the catalogue without the user
+    /// pressing Enter first.
+    /// </summary>
+    private void StartBrowseIfEmpty()
+    {
+        if (_browseStarted)
+        {
+            return;
+        }
+
+        _browseStarted = true;
+        if (ViewModel.Loader.IsLoading)
+        {
+            return;
+        }
+
+        Logger.Info("[TOOLBOX] homepage browse start");
+        ViewModel.SubmitSearch();
     }
 
     /// <summary>
