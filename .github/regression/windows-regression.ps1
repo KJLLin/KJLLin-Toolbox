@@ -122,16 +122,44 @@ function Browse {
     [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
 }
 
-# The section buttons are hit-tested against the client log, not guessed: a toolbar that
-# has just been rebuilt can move a few pixels, and a click that lands on a gap is silent.
+# Each section button publishes its caption as its automation name, so UI Automation can
+# press it directly; pixel clicking only remains a fallback for when that is unavailable.
+function Invoke-ByName([IntPtr]$handle, [string]$name) {
+    try {
+        Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+        $win = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
+        $cond = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::NameProperty, $name)
+        $el = $win.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+        if (-not $el) {
+            Write-Host "UIA-MISS $name"
+            return $false
+        }
+        $pattern = $el.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+        $pattern.Invoke()
+        Write-Host "UIA-INVOKE $name"
+        return $true
+    } catch {
+        Write-Host "UIA-FAIL $name $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# Section clicks are confirmed against the client log, never assumed.
 function Click-Section([string]$label, [int]$x) {
     $logBefore = (Get-LogText)
-    foreach ($dy in @(0, -5, 5, -10, 10)) {
-        Click-Rel $x (137 + $dy)
+    if (Invoke-ByName $handle $label) {
         Start-Sleep -Seconds 2
-        if ((Get-LogText).Length -gt $logBefore.Length) {
-            Write-Host "SECTION-CLICK $label x=$x y=$(137 + $dy)"
-            return
+        if ((Get-LogText).Length -gt $logBefore.Length) { return }
+    }
+    foreach ($dy in @(0, -6, 6)) {
+        foreach ($dx in @(0, -10, 10)) {
+            Click-Rel ($x + $dx) (142 + $dy)
+            Start-Sleep -Seconds 2
+            if ((Get-LogText).Length -gt $logBefore.Length) {
+                Write-Host "SECTION-CLICK $label x=$($x + $dx) y=$(142 + $dy)"
+                return
+            }
         }
     }
     Write-Host "SECTION-MISS $label x=$x"
