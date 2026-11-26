@@ -361,6 +361,7 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
                 .Where(package => !CuratedWinGet.IsBlocked(package.Id))
                 .ToList();
             everything.AddRange(GetToolboxOwnedPackages(query));
+            Logger.Info($"[TOOLBOX] search query={query} matches={everything.Count} scope=all");
             return everything;
         }
 
@@ -368,6 +369,7 @@ internal sealed partial class WinGetCliHelper : IWinGetManagerHelper
             .Where(package => CuratedWinGet.Contains(package.Id))
             .ToList();
         matches.AddRange(GetToolboxOwnedPackages(query));
+        Logger.Info($"[TOOLBOX] search query={query} matches={matches.Count} scope=curated");
         return matches;
     }
 
